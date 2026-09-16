@@ -1,0 +1,4415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0612">
+<!-- v19：内联空 favicon，避免浏览器请求 /favicon.ico 产生 404 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%230a0612' stroke='%23ff2e88' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23ff2e88'/%3E%3C/svg%3E">
+<title>唱片店模拟器 v0.4</title>
+<style>
+:root{
+  --bg:#0a0612; --panel:#1a0d2e; --magenta:#ff2e88; --cyan:#5fe8ff;
+  --gold:#ffd166; --bone:#f2ede4; --muted:rgba(180,165,220,.7);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--bone);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+  user-select:none;-webkit-user-select:none;touch-action:none;overscroll-behavior:none;}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:1;touch-action:none;}
+.num{font-variant-numeric:tabular-nums;}
+
+/* ---------- 通用屏幕 ---------- */
+/* === PATCH v05a === */.screen{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;background:#0a0612}#scr-rec{background:transparent!important}
+.screen.on{display:flex;}
+.halftone{position:absolute;inset:0;pointer-events:none;
+  background-image:radial-gradient(rgba(255,255,255,.055) 1px,transparent 1px);
+  background-size:5px 5px;}
+.deco{position:absolute;right:-10px;top:22%;font-size:84px;font-weight:900;font-style:italic;
+  color:rgba(255,255,255,.028);letter-spacing:-4px;pointer-events:none;white-space:nowrap;
+  transform:rotate(-90deg);transform-origin:right top;}
+
+/* ---------- 标题 ---------- */
+.title-blk{padding:0 26px;margin-top:11vh;position:relative;}
+.title-en{display:block;font-size:15px;font-weight:800;letter-spacing:.5em;color:var(--magenta);
+  transform:skewX(-12deg);margin-bottom:6px;}
+.title-cn{display:block;font-size:52px;font-weight:900;font-style:italic;line-height:1.02;
+  letter-spacing:-1px;text-shadow:3px 3px 0 var(--magenta),6px 6px 0 rgba(255,46,136,.25);}
+.title-cn2{display:block;font-size:30px;font-weight:900;font-style:italic;color:var(--cyan);
+  text-shadow:3px 3px 0 rgba(95,232,255,.2);transform:skewX(-8deg);margin-top:2px;}
+
+/* ---------- 菜单 ---------- */
+.menu-wrap{margin-top:5vh;padding:0 22px;display:flex;flex-direction:column;gap:12px;}
+.menu-item{position:relative;display:flex;align-items:center;gap:12px;height:60px;padding:0 16px;
+  background:linear-gradient(100deg,rgba(255,46,136,.14),rgba(26,13,46,.9) 60%);
+  border:none;border-left:4px solid var(--magenta);color:var(--bone);
+  font-size:19px;font-weight:800;letter-spacing:.12em;font-family:inherit;
+  transform:skewX(-8deg);transition:transform .12s ease-out,box-shadow .12s;
+  box-shadow:4px 4px 0 rgba(0,0,0,.45);overflow:hidden;text-align:left;}
+.menu-item>*{transform:skewX(8deg);}
+.menu-item .idx{font-size:12px;font-weight:700;color:var(--magenta);opacity:.85;min-width:20px;}
+.menu-item .ic{font-size:17px;width:22px;text-align:center;}
+.menu-item .tx{flex:1;}
+.menu-item:active{transform:skewX(-8deg) scale(.96);box-shadow:0 0 22px rgba(255,46,136,.6);}
+.menu-item::after{content:'';position:absolute;top:0;left:-60%;width:40%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);
+  transform:skewX(-20deg);transition:left .35s;}
+.menu-item:active::after{left:120%;}
+.menu-item.cy{border-left-color:var(--cyan);background:linear-gradient(100deg,rgba(95,232,255,.12),rgba(26,13,46,.9) 60%);}
+.menu-item.cy .idx{color:var(--cyan);}
+.menu-item.gd{border-left-color:var(--gold);background:linear-gradient(100deg,rgba(255,209,102,.12),rgba(26,13,46,.9) 60%);}
+.menu-item.gd .idx{color:var(--gold);}
+
+.foot{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom));left:0;right:0;
+  text-align:center;font-size:11px;color:var(--muted);letter-spacing:.1em;}
+
+/* ---------- 顶栏 ---------- */
+.topbar{display:flex;align-items:center;gap:10px;padding:calc(14px + env(safe-area-inset-top)) 16px 12px;
+  border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;background:rgba(10,6,18,.86);}
+.topbar h2{font-size:18px;font-weight:900;font-style:italic;letter-spacing:.1em;flex:1;}
+.tbtn{background:none;border:none;color:var(--bone);font-size:15px;font-family:inherit;
+  padding:10px 12px;min-width:48px;min-height:48px;display:flex;align-items:center;justify-content:center;
+  font-weight:700;}
+.tbtn:active{opacity:.5;}
+.body-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(30px + env(safe-area-inset-bottom));
+  touch-action:pan-y;}
+
+/* ---------- 卡片 / 列表 ---------- */
+.card{background:linear-gradient(120deg,rgba(255,255,255,.05),rgba(26,13,46,.95));
+  border-left:3px solid var(--magenta);padding:13px 14px;margin-bottom:10px;
+  transform:skewX(-1.6deg);display:flex;align-items:center;gap:12px;}
+.card>*{transform:skewX(1.6deg);}
+.card .cn{font-size:15px;font-weight:800;letter-spacing:.04em;}
+.card .cd{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.5;}
+.card.gold{border-left-color:var(--gold);}
+.card.cyan{border-left-color:var(--cyan);}
+.card.locked{opacity:.4;}
+
+/* ---------- 库存 ---------- */
+.inv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.inv-item{position:relative;aspect-ratio:1;border:2px solid rgba(255,255,255,.1);
+  background:#12081f;overflow:hidden;transform:skewX(-2deg);transition:transform .12s;}
+.inv-item:active{transform:skewX(-2deg) scale(.94);border-color:var(--magenta);}
+.inv-item img{width:100%;height:100%;object-fit:cover;display:block;}
+.inv-item .badge{position:absolute;top:3px;right:3px;font-size:9px;font-weight:800;
+  background:var(--gold);color:#2a1a00;padding:1px 4px;letter-spacing:.05em;}
+.inv-item .nm{position:absolute;left:0;right:0;bottom:0;font-size:9.5px;font-weight:700;
+  background:rgba(10,6,18,.85);padding:4px 5px;line-height:1.25;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ---------- 唱片观赏 UI ---------- */
+#scr-rec{background:transparent;pointer-events:auto;}
+.rec-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;
+  padding:calc(14px + env(safe-area-inset-top)) 18px 0;z-index:5;}
+.rec-bottom{position:absolute;left:0;right:0;bottom:0;padding:0 20px calc(24px + env(safe-area-inset-bottom));
+  text-align:center;z-index:5;pointer-events:none;}
+.rec-bottom>*{pointer-events:auto;}
+.rec-name{font-size:23px;font-weight:900;font-style:italic;letter-spacing:.04em;
+  text-shadow:2px 2px 0 rgba(255,46,136,.55);}
+.rec-tags{font-size:11.5px;color:var(--muted);letter-spacing:.14em;margin-top:5px;}
+.rec-btns{display:flex;gap:10px;margin-top:18px;justify-content:center;}
+.rbtn{flex:1;max-width:120px;height:52px;border:none;font-family:inherit;font-size:15px;font-weight:800;
+  letter-spacing:.1em;background:rgba(26,13,46,.92);color:var(--bone);border-bottom:3px solid var(--magenta);
+  transform:skewX(-7deg);transition:transform .1s;}
+.rbtn:active{transform:skewX(-7deg) scale(.94);}
+.rbtn.pri{background:var(--magenta);color:#fff;border-bottom-color:#a1004f;box-shadow:0 0 22px rgba(255,46,136,.5);}
+
+/* ---------- 对话框 ---------- */
+.dlg{position:fixed;left:0;right:0;bottom:0;z-index:30;display:none;}
+.dlg.on{display:block;}
+.dlg-panel{margin:0 10px calc(12px + env(safe-area-inset-bottom));
+  background:linear-gradient(170deg,rgba(26,13,46,.97),rgba(10,6,18,.98));
+  border:1px solid rgba(255,46,136,.45);border-left:5px solid var(--magenta);
+  padding:15px 17px 13px;min-height:132px;position:relative;
+  box-shadow:0 -6px 40px rgba(255,46,136,.18);}
+.dlg-name{position:absolute;top:-13px;left:14px;background:var(--magenta);color:#fff;
+  font-size:11.5px;font-weight:900;letter-spacing:.2em;padding:3px 12px;transform:skewX(-10deg);}
+.dlg-name.me{background:var(--cyan);color:#06222c;}
+.dlg-text{font-size:15.5px;line-height:1.85;letter-spacing:.03em;min-height:60px;padding-top:6px;}
+.dlg-next{position:absolute;right:14px;bottom:8px;font-size:11px;color:var(--magenta);
+  animation:blink 1.1s infinite;letter-spacing:.1em;}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+
+/* ---------- 播放器 ---------- */
+#scr-player{background:#0a0612;}
+#viz{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70%;height:60%;opacity:0.75;pointer-events:none;z-index:0}
+.pl-wrap{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;
+  padding:calc(14px + env(safe-area-inset-top)) 22px calc(22px + env(safe-area-inset-bottom));}
+.pl-top{display:flex;justify-content:space-between;align-items:center;font-size:11px;
+  letter-spacing:.3em;color:var(--cyan);font-weight:800;}
+.vinyl{width:min(62vw,250px);aspect-ratio:1;margin:auto;border-radius:50%;
+  background:repeating-radial-gradient(circle at 50% 50%,#12101a 0 2px,#1c1a26 2px 4px);
+  box-shadow:0 0 60px rgba(255,46,136,.3),inset 0 0 40px rgba(0,0,0,.9);
+  position:relative;animation:spin 4s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.vinyl::before{content:'';position:absolute;inset:26%;border-radius:50%;
+  background:radial-gradient(circle,var(--vc1,#ff2e88),var(--vc2,#5c2f16));
+  box-shadow:0 0 24px rgba(0,0,0,.7);}
+.vinyl::after{content:'';position:absolute;inset:47%;border-radius:50%;background:#000;
+  box-shadow:0 0 0 3px rgba(220,215,240,.5);}
+.pl-name{text-align:center;font-size:24px;font-weight:900;font-style:italic;
+  text-shadow:2px 2px 0 rgba(255,46,136,.55);}
+.pl-sub{text-align:center;font-size:11.5px;color:var(--muted);letter-spacing:.16em;margin-top:6px;}
+.pl-bar{margin-top:20px;height:5px;background:rgba(255,255,255,.12);position:relative;overflow:hidden;}
+.pl-bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--magenta),var(--cyan));
+  box-shadow:0 0 12px rgba(255,46,136,.8);}
+.pl-times{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px;}
+.pl-ctrl{display:flex;justify-content:center;gap:16px;margin-top:16px;}
+.pl-ctrl button{width:52px;height:52px;border-radius:0;border:1px solid rgba(255,255,255,.18);
+  background:rgba(26,13,46,.9);color:var(--bone);font-size:19px;font-family:inherit;
+  transform:skewX(-7deg);transition:transform .1s;}
+.pl-ctrl button:active{transform:skewX(-7deg) scale(.9);}
+.pl-ctrl button.big{width:64px;height:64px;background:var(--magenta);border-color:var(--magenta);}
+.pl-collect{margin:16px auto 0;height:46px;padding:0 26px;border:none;font-family:inherit;
+  font-size:13px;font-weight:800;letter-spacing:.16em;background:transparent;color:var(--gold);
+  border:2px solid var(--gold);transform:skewX(-8deg);}
+.pl-collect:active{background:var(--gold);color:#2a1a00;}
+.pl-collect.done{border-color:var(--muted);color:var(--muted);}
+
+/* ---------- 弹窗 ---------- */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(6,3,12,.82);display:none;
+  align-items:center;justify-content:center;padding:24px;}
+.modal.on{display:flex;}
+.modal-box{width:100%;max-width:360px;background:linear-gradient(160deg,#1a0d2e,#0a0612);
+  border:1px solid rgba(255,46,136,.5);border-top:5px solid var(--magenta);
+  padding:24px 20px 20px;text-align:center;box-shadow:0 0 60px rgba(255,46,136,.25);
+  animation:pop .26s cubic-bezier(.2,1.2,.4,1);}
+@keyframes pop{from{transform:scale(.85) translateY(14px);opacity:0}to{transform:none;opacity:1}}
+.modal-box h3{font-size:22px;font-weight:900;font-style:italic;letter-spacing:.08em;margin-bottom:12px;}
+.modal-box p{font-size:13.5px;line-height:1.8;color:var(--muted);margin-bottom:16px;white-space:pre-line;}
+.modal-box .big{font-size:34px;font-weight:900;color:var(--gold);font-variant-numeric:tabular-nums;
+  margin:6px 0 14px;}
+.modal-box button{width:100%;height:50px;border:none;font-family:inherit;font-size:15px;font-weight:800;
+  letter-spacing:.14em;background:var(--magenta);color:#fff;transform:skewX(-7deg);margin-top:8px;}
+.modal-box button.ghost{background:transparent;border:2px solid rgba(255,255,255,.25);color:var(--bone);}
+.modal-box button:active{transform:skewX(-7deg) scale(.96);}
+
+/* ---------- 日结 ---------- */
+.rep-row{display:flex;justify-content:space-between;font-size:13.5px;padding:7px 0;
+  border-bottom:1px dashed rgba(255,255,255,.08);}
+.rep-row b{font-variant-numeric:tabular-nums;font-weight:800;}
+.sep{height:1px;background:linear-gradient(90deg,var(--magenta),transparent);margin:14px 0;}
+.h-sec{font-size:11px;letter-spacing:.28em;color:var(--magenta);font-weight:800;margin:16px 0 8px;}
+
+/* ---------- 设置 ---------- */
+.set-row{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.set-row label{flex:1;font-size:14px;letter-spacing:.06em;font-weight:600;}
+input[type=range]{-webkit-appearance:none;width:130px;height:4px;background:rgba(255,255,255,.15);outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:var(--magenta);
+  box-shadow:0 0 10px rgba(255,46,136,.8);}
+.sw{width:52px;height:28px;background:rgba(255,255,255,.14);position:relative;transition:.2s;}
+.sw i{position:absolute;top:3px;left:3px;width:22px;height:22px;background:var(--muted);transition:.2s;}
+.sw.on{background:rgba(255,46,136,.35);}
+.sw.on i{left:27px;background:var(--magenta);}
+
+/* ---------- 暂停按钮 ---------- */
+#pauseBtn{position:fixed;top:calc(12px + env(safe-area-inset-top));right:14px;z-index:15;
+  width:48px;height:48px;display:none;align-items:center;justify-content:center;
+  background:rgba(26,13,46,.7);border:1px solid rgba(255,255,255,.14);color:var(--bone);
+  font-size:20px;transform:skewX(-6deg);}
+#pauseBtn.on{display:flex;}
+
+.toast{position:fixed;top:calc(16px + env(safe-area-inset-top));left:50%;transform:translateX(-50%) skewX(-10deg);
+  background:var(--gold);color:#2a1a00;padding:10px 22px;font-size:13px;font-weight:900;letter-spacing:.14em;
+  z-index:99;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;}
+.toast.on{opacity:1;transform:translateX(-50%) skewX(-10deg) translateY(6px);}
+
+.tag{display:inline-block;font-size:10px;padding:2px 7px;background:rgba(255,255,255,.09);
+  margin:2px 4px 2px 0;letter-spacing:.08em;color:var(--bone);}
+/* === PATCH v05 === */
+.inv-grid{display:flex!important;flex-direction:column;gap:10px;padding:4px 0}
+.inv-card{display:flex;gap:14px;padding:12px;background:linear-gradient(100deg,rgba(255,255,255,.045),rgba(26,13,46,.92));border-left:3px solid var(--magenta);transform:skewX(-1.2deg);transition:transform .12s;box-shadow:0 2px 14px rgba(0,0,0,.4);position:relative;overflow:hidden}
+.inv-card>*{transform:skewX(1.2deg)}
+.inv-card:active{transform:skewX(-1.2deg) scale(.98);border-left-color:var(--cyan)}
+.inv-card.r2{border-left-color:var(--gold)}
+.inv-card.r3{border-left-color:var(--magenta);box-shadow:0 0 20px rgba(255,46,136,.35)}
+.inv-thumb{width:82px;height:82px;flex-shrink:0;position:relative}
+.inv-thumb img{width:100%;height:100%;object-fit:cover;display:block;border-radius:2px}
+.inv-thumb .rbadge{position:absolute;top:2px;right:2px;font-size:9px;font-weight:800;background:var(--gold);color:#2a1a00;padding:1px 5px;letter-spacing:.05em}
+.inv-info{flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.inv-info .nm{font-size:16px;font-weight:800;letter-spacing:.04em;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inv-info .tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag-pill{font-size:10px;padding:2px 8px;background:rgba(255,255,255,.08);color:var(--bone);letter-spacing:.06em;border-radius:2px}
+.tag-pill.genre{background:rgba(255,46,136,.25);color:#ffb8d5}
+.tag-pill.mood{background:rgba(95,232,255,.22);color:#b8f0ff}
+.inv-info .meta{font-size:10.5px;color:var(--muted);margin-top:6px;letter-spacing:.12em}
+#scr-draw{background:radial-gradient(circle at 50% 40%,#1a0d2e,#0a0612 70%);z-index:40;display:none;flex-direction:column}
+#scr-draw.on{display:flex}
+.draw-bg{position:absolute;inset:0;background-image:radial-gradient(rgba(255,46,136,.08) 1px,transparent 1px);background-size:18px 18px;pointer-events:none}
+.draw-header{text-align:center;padding:calc(50px + env(safe-area-inset-top)) 0 20px;font-size:24px;font-weight:900;font-style:italic;letter-spacing:.2em;color:var(--cyan);text-shadow:2px 2px 0 rgba(95,232,255,.3);position:relative;z-index:2}
+.draw-grid{flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:16px;padding:0 24px;align-content:center;max-width:440px;margin:0 auto;width:100%;position:relative;z-index:2}
+/* v19：付费进货会出 6 张，改成 3 列 2 行，避免小屏把按钮挤出屏幕 */
+.draw-grid.n6{grid-template-columns:repeat(3,1fr);gap:12px;max-width:440px}
+.draw-grid.n6 .draw-card{aspect-ratio:1}
+.draw-card{aspect-ratio:1;position:relative;perspective:900px;animation:drawPop .5s cubic-bezier(.2,1.4,.4,1) both}
+@media (max-height:700px){
+  .draw-header{padding:calc(24px + env(safe-area-inset-top)) 0 12px;font-size:20px}
+  .draw-footer{padding:14px 24px calc(18px + env(safe-area-inset-bottom))}
+  .draw-btn{height:48px;font-size:15px}
+}
+@keyframes drawPop{from{transform:scale(.5) rotate(-12deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+.draw-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .8s cubic-bezier(.4,.0,.2,1);transform:rotateY(180deg)}
+.draw-card.flipped .draw-inner{transform:rotateY(0deg)}
+.draw-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:6px;overflow:hidden}
+.draw-back{background:linear-gradient(135deg,#2a1740,#0a0612);border:2px solid var(--magenta);display:flex;align-items:center;justify-content:center;font-size:60px;font-weight:900;color:var(--magenta);text-shadow:0 0 20px var(--magenta);transform:rotateY(180deg)}
+.draw-front{background-size:cover;background-position:center;border:2px solid var(--cyan);box-shadow:0 0 24px rgba(95,232,255,.4)}
+.draw-glow{position:absolute;inset:-6px;border-radius:8px;pointer-events:none}
+.draw-glow.r2{background:radial-gradient(circle,rgba(255,209,102,.4),transparent 70%)}
+.draw-glow.r3{background:radial-gradient(circle,rgba(255,46,136,.55),transparent 70%);animation:drawGlow 1.5s ease-in-out infinite}
+@keyframes drawGlow{0%,100%{opacity:.6}50%{opacity:1}}
+.draw-footer{padding:24px 24px calc(40px + env(safe-area-inset-bottom));text-align:center;position:relative;z-index:2}
+.draw-btn{height:56px;padding:0 50px;border:none;font-family:inherit;font-size:16px;font-weight:900;letter-spacing:.15em;background:linear-gradient(180deg,var(--magenta),#a1004f);color:#fff;transform:skewX(-6deg);border-bottom:3px solid #6b0034;box-shadow:0 0 24px rgba(255,46,136,.5)}
+.draw-btn:disabled{opacity:.35;box-shadow:none}
+.draw-btn:active{transform:skewX(-6deg) scale(.96)}
+#scr-player{background:#0a0612;overflow:hidden}
+#scr-player::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,var(--vc1,#ff2e88) 0%,transparent 55%),radial-gradient(circle at 50% 80%,var(--vc2,#5c2f16) 0%,transparent 60%),#0a0612;opacity:.3;filter:blur(70px);z-index:0;pointer-events:none}
+.pl-wrap{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:calc(14px + env(safe-area-inset-top)) 0 calc(24px + env(safe-area-inset-bottom))}
+.pl-top{display:flex;justify-content:space-between;align-items:center;padding:0 20px;font-size:10.5px;letter-spacing:.3em;color:var(--cyan);font-weight:800}
+.vinyl{width:min(76vw,320px)!important;aspect-ratio:1;margin:auto!important;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,#0c0c11 0 1.5px,#17171f 1.5px 3px);box-shadow:0 20px 60px rgba(0,0,0,.85),inset 0 0 60px rgba(0,0,0,.95),0 0 70px rgba(255,46,136,.28)!important;position:relative;animation:spin 8s linear infinite}
+.vinyl.paused{animation-play-state:paused}
+.vinyl::before{content:'';position:absolute;inset:29%;border-radius:50%;background:radial-gradient(circle,var(--vc1,#ff2e88),var(--vc2,#5c2f16));box-shadow:inset 0 0 22px rgba(0,0,0,.75);border:4px solid #0a0612}
+.vinyl::after{content:'';position:absolute;inset:47.5%;border-radius:50%;background:#000;box-shadow:0 0 0 3px rgba(220,215,240,.55),0 0 14px rgba(0,0,0,.9)}
+.pl-name{text-align:center;font-size:22px;font-weight:800;letter-spacing:.04em;padding:0 24px;margin-top:6px}
+.pl-sub{text-align:center;font-size:11px;color:var(--muted);letter-spacing:.16em;margin-top:6px;padding:0 24px}
+.pl-bar{margin:22px 20px 0!important;height:3px!important;background:rgba(255,255,255,.12)!important;position:relative;border-radius:3px;overflow:visible!important}
+.pl-bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--magenta),var(--cyan));border-radius:3px;box-shadow:0 0 12px rgba(255,46,136,.8)}
+.pl-dot{position:absolute;top:50%;width:12px;height:12px;background:#fff;border-radius:50%;box-shadow:0 0 12px rgba(255,46,136,.9);transform:translate(-50%,-50%);transition:left .12s linear;left:0%}
+.pl-times{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin:8px 20px 0!important;letter-spacing:.15em}
+.pl-ctrl{display:flex;justify-content:center;align-items:center;gap:28px;margin-top:26px!important;padding:0 20px}
+.pl-ctrl button{border:none!important;background:transparent!important;color:var(--bone);font-family:inherit;transition:transform .12s;padding:0!important;border-radius:0!important}
+.pl-ctrl button:active{transform:scale(.9)}
+.pl-ctrl button:not(.big){width:48px!important;height:48px!important;font-size:22px!important;opacity:.8;border:none!important}
+.pl-ctrl button.big{width:76px!important;height:76px!important;font-size:28px!important;background:linear-gradient(180deg,var(--magenta),#a1004f)!important;border-radius:50%!important;box-shadow:0 8px 32px rgba(255,46,136,.55),inset 0 -3px 8px rgba(0,0,0,.3)!important}
+.pl-collect{margin:22px auto 0!important;height:44px!important;padding:0 32px!important;border:2px solid var(--gold)!important;background:transparent!important;color:var(--gold)!important;font-size:13px;font-weight:800;letter-spacing:.16em;transform:skewX(-8deg);border-radius:0!important}
+.pl-collect.done{border-color:var(--muted)!important;color:var(--muted)!important}
+/* === END PATCH v05 === */
+
+/* === PATCH v20 启动页 === */
+#scr-boot{background:radial-gradient(circle at 50% 44%,#2a1040,#0a0612 74%);z-index:70;
+  align-items:center;justify-content:center;text-align:center}
+#scr-boot .boot-deco{position:absolute;inset:0;pointer-events:none;
+  background-image:radial-gradient(rgba(255,46,136,.10) 1px,transparent 1px);background-size:16px 16px}
+#scr-boot .boot-glow{position:absolute;width:78vw;height:78vw;max-width:520px;max-height:520px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,46,136,.22),transparent 68%);filter:blur(30px);pointer-events:none}
+.boot-wrap{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:22px;padding:0 28px}
+.boot-vinyl{width:132px;aspect-ratio:1;border-radius:50%;position:relative;animation:spin 5.5s linear infinite;
+  background:repeating-radial-gradient(circle at 50% 50%,#0c0c11 0 2px,#17171f 2px 4px);
+  box-shadow:0 0 54px rgba(255,46,136,.45),inset 0 0 40px rgba(0,0,0,.9)}
+.boot-vinyl::before{content:'';position:absolute;inset:30%;border-radius:50%;
+  background:radial-gradient(circle,var(--magenta),#5c2f16);box-shadow:inset 0 0 16px rgba(0,0,0,.7)}
+.boot-vinyl::after{content:'';position:absolute;inset:46.5%;border-radius:50%;background:#000;
+  box-shadow:0 0 0 3px rgba(220,215,240,.5)}
+.boot-title{margin:0;padding:0;position:relative}
+.boot-tap{position:relative;font-family:inherit;font-size:16px;font-weight:900;letter-spacing:.28em;color:var(--bone);
+  padding:15px 30px;border:2px solid var(--magenta);background:rgba(26,13,46,.72);
+  transform:skewX(-8deg);cursor:pointer;animation:bootBlink 1.7s ease-in-out infinite;margin-top:6px}
+.boot-tap:active{transform:skewX(-8deg) scale(.95);background:var(--magenta);color:#fff}
+@keyframes bootBlink{0%,100%{opacity:.5;box-shadow:0 0 0 rgba(255,46,136,0)}50%{opacity:1;box-shadow:0 0 28px rgba(255,46,136,.6)}}
+.boot-hint{font-size:10.5px;color:var(--muted);letter-spacing:.18em;line-height:1.9;text-align:center}
+/* === END PATCH v20 === */
+
+/* === PATCH v06 UI === */
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:90}
+@keyframes menuSkewIn{0%{transform:skewX(-8deg) translateX(-60px) scale(.9);opacity:0}60%{transform:skewX(-8deg) translateX(10px) scale(1.03);opacity:1}100%{transform:skewX(-8deg) translateX(0) scale(1);opacity:1}}
+#scr-start.on .menu-item,#scr-pause.on .menu-item{animation:menuSkewIn .55s cubic-bezier(.2,1.4,.4,1) both}
+#scr-start.on .menu-item:nth-child(1),#scr-pause.on .menu-item:nth-child(1){animation-delay:.05s}
+#scr-start.on .menu-item:nth-child(2),#scr-pause.on .menu-item:nth-child(2){animation-delay:.12s}
+#scr-start.on .menu-item:nth-child(3),#scr-pause.on .menu-item:nth-child(3){animation-delay:.19s}
+#scr-start.on .menu-item:nth-child(4),#scr-pause.on .menu-item:nth-child(4){animation-delay:.26s}
+@keyframes titleIn{0%{transform:skewX(-12deg) translateX(-80px);opacity:0;letter-spacing:.9em}100%{transform:skewX(-12deg) translateX(0);opacity:1;letter-spacing:.55em}}
+#scr-start.on .title-en{animation:titleIn .6s cubic-bezier(.2,1.2,.4,1) both}
+@keyframes titleCnIn{0%{transform:translateX(-50px) scale(.8) rotate(-6deg);opacity:0}60%{transform:translateX(8px) scale(1.06) rotate(1deg);opacity:1}100%{transform:translateX(0) scale(1) rotate(0);opacity:1}}
+#scr-start.on .title-cn{animation:titleCnIn .75s cubic-bezier(.2,1.4,.4,1) .1s both}
+#scr-start.on .title-cn2{animation:titleCnIn .75s cubic-bezier(.2,1.4,.4,1) .22s both}
+.menu-item,.act-btn,.rbtn,.draw-btn,.pl-collect{position:relative;overflow:hidden}
+.menu-item::before,.act-btn::before,.rbtn::before,.draw-btn::before{
+  content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);
+  transform:skewX(-20deg);transition:left .5s;pointer-events:none}
+.menu-item:active::before,.act-btn:active::before,.rbtn:active::before,.draw-btn:active::before{left:130%}
+@keyframes recBtnPop{0%{transform:skewX(-7deg) scale(.9);opacity:.6}60%{transform:skewX(-7deg) scale(1.04)}100%{transform:skewX(-7deg) scale(1);opacity:1}}
+#scr-rec.on .rbtn{animation:recBtnPop .35s cubic-bezier(.2,1.4,.4,1) both}
+#scr-rec.on .rbtn:nth-child(1){animation-delay:.05s}
+#scr-rec.on .rbtn:nth-child(2){animation-delay:.12s}
+#scr-rec.on .rbtn:nth-child(3){animation-delay:.19s}
+/* END PATCH v06 UI */
+</style>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+<button id="pauseBtn">☰</button>
+<div id="hudRevenue" style="position:fixed;top:calc(52px + env(safe-area-inset-top));left:14px;z-index:14;background:rgba(10,6,18,.78);border:1px solid rgba(255,255,255,.14);padding:8px 14px;font-size:13px;font-weight:800;letter-spacing:.08em;transform:skewX(-8deg);display:none"><span style="display:inline-block;transform:skewX(8deg)"><span style="color:rgba(180,165,220,.7);font-size:10px;letter-spacing:.15em;margin-right:6px">今日营业额</span><span id="hudRevenueVal" style="color:#ffd166;font-variant-numeric:tabular-nums">+0</span></span></div>
+
+<!-- ============ 启动页（点击开始） ============ -->
+<div id="scr-boot" class="screen on">
+  <div class="boot-deco"></div>
+  <div class="boot-glow"></div>
+  <div class="boot-wrap">
+    <div class="boot-vinyl"></div>
+    <div class="title-blk boot-title" style="margin-top:0;padding:0">
+      <span class="title-en">RECORDS</span>
+      <span class="title-cn" style="font-size:44px">唱片店</span>
+      <span class="title-cn2" style="font-size:24px">模拟器</span>
+    </div>
+    <button class="boot-tap" id="bootStart">点击开始游戏</button>
+    <div class="boot-hint">建议开启声音体验 8bit 音效与 BGM<br>同一张唱片永远听到同一首歌</div>
+  </div>
+</div>
+
+<!-- ============ 开始菜单 ============ -->
+<div id="scr-start" class="screen">
+  <div class="halftone"></div>
+  <div class="deco">RECORD STORE</div>
+  <div class="title-blk">
+    <span class="title-en">RECORDS</span>
+    <span class="title-cn">唱片店</span>
+    <span class="title-cn2">模拟器</span>
+  </div>
+  <div class="menu-wrap">
+    <button class="menu-item" data-act="play"><span class="idx">01</span><span class="ic">▶</span><span class="tx" id="playLabel">开始游戏</span></button>
+    <button class="menu-item cy" data-act="collection"><span class="idx">02</span><span class="ic">💿</span><span class="tx">收藏</span></button>
+    <button class="menu-item gd" data-act="ach"><span class="idx">03</span><span class="ic">🏆</span><span class="tx">成就</span></button>
+    <button class="menu-item cy" data-act="settings"><span class="idx">04</span><span class="ic">⚙</span><span class="tx">设置</span></button>
+  </div>
+  <div class="foot">v0.4 · <span id="saveInfo">无存档</span></div>
+</div>
+
+<!-- ============ 暂停菜单 ============ -->
+<div id="scr-pause" class="screen">
+  <div class="halftone"></div>
+  <div class="title-blk" style="margin-top:16vh">
+    <span class="title-en">PAUSE</span>
+    <span class="title-cn" style="font-size:44px">暂停</span>
+  </div>
+  <div class="menu-wrap">
+    <button class="menu-item" data-act="resume"><span class="idx">▶</span><span class="tx">继续营业</span></button>
+    <button class="menu-item cy" data-act="collection"><span class="idx">💿</span><span class="tx">收藏</span></button>
+    <button class="menu-item cy" data-act="settings"><span class="idx">⚙</span><span class="tx">设置</span></button>
+    <button class="menu-item gd" data-act="home"><span class="idx">🏠</span><span class="tx">返回主菜单</span></button>
+  </div>
+  <div class="foot" id="pauseInfo"></div>
+</div>
+
+<!-- ============ 库存 ============ -->
+<div id="scr-inv" class="screen">
+  <div class="topbar"><h2>库存 <span id="invCount" style="font-size:13px;color:var(--muted)"></span></h2></div>
+  <div class="body-scroll"><div class="inv-grid" id="invGrid"></div></div>
+</div>
+
+<!-- ============ 唱片观赏 UI ============ -->
+<div id="scr-rec" class="screen">
+  <div class="rec-top">
+    <button class="tbtn" id="recClose">✕</button>
+    <button class="tbtn" id="recPause">☰</button>
+  </div>
+  <div class="rec-bottom">
+    <div class="rec-name" id="recName">—</div>
+    <div class="rec-tags" id="recTags">—</div>
+    <div class="rec-btns">
+      <button class="rbtn" id="recListen">试听</button>
+      <button class="rbtn" id="recFlip">翻面</button>
+      <button class="rbtn" id="recCollect">收藏</button>
+      <button class="rbtn pri" id="recGive">交给客人</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 对话 ============ -->
+<div id="dlg" class="dlg">
+  <div class="dlg-panel">
+    <div class="dlg-name" id="dlgName">客人</div>
+    <div class="dlg-text" id="dlgText"></div>
+    <div class="dlg-next" id="dlgNext">▼</div>
+  </div>
+</div>
+
+<!-- ============ 播放器 ============ -->
+<div id="scr-player" class="screen">
+  <canvas id="viz"></canvas>
+  <div class="pl-wrap">
+    <div class="pl-top">
+      <button class="tbtn" id="plClose" style="color:var(--bone)">✕</button>
+      <span>NOW PLAYING</span>
+    </div>
+    <div class="vinyl" id="vinyl"></div>
+    <div class="pl-name" id="plName">—</div>
+    <div class="pl-sub" id="plSub">—</div>
+    <div class="pl-bar"><i id="plFill" style="width:0%"></i></div>
+    <div class="pl-times"><span id="plCur">00:00</span><span id="plDur">00:30</span></div>
+    <div class="pl-ctrl">
+      <button id="plPlay">⏸</button>
+      <button id="plRestart" class="big">⟳</button>
+    </div>
+    <button class="pl-collect" id="plCollect">加入收藏</button>
+  </div>
+</div>
+
+<!-- ============ 收藏 ============ -->
+<div id="scr-collection" class="screen">
+  <div class="topbar"><button class="tbtn" data-back>←</button><h2>收藏</h2></div>
+  <div class="body-scroll"><div class="inv-grid" id="colGrid"></div>
+    <div style="text-align:center;font-size:12px;color:var(--muted);margin-top:20px" id="colCount"></div>
+  </div>
+</div>
+
+<!-- ============ 成就 ============ -->
+<div id="scr-ach" class="screen">
+  <div class="topbar"><button class="tbtn" data-back>←</button><h2>成就</h2></div>
+  <div class="body-scroll" id="achList"></div>
+</div>
+
+<!-- ============ 设置 ============ -->
+<div id="scr-settings" class="screen">
+  <div class="topbar"><button class="tbtn" data-back>←</button><h2>设置</h2></div>
+  <div class="body-scroll">
+    <div class="h-sec">声音</div>
+    <div class="set-row"><label>音乐音量</label><input type="range" id="volMusic" min="0" max="100" value="70"></div>
+    <div class="set-row"><label>音效音量</label><input type="range" id="volSfx" min="0" max="100" value="50"></div>
+    <div class="h-sec">存档</div>
+    <div style="color:var(--muted);font-size:12.5px;line-height:2;padding:8px 0">
+      · 游戏自动保存，无需手动操作<br>
+      · 存档仅保存在本机浏览器，清缓存会丢失
+    </div>
+    <button class="menu-item" style="margin-top:18px;width:100%" id="btnReset"><span class="idx">!</span><span class="tx">重新开始（清空存档）</span></button>
+    <div class="h-sec">关于</div>
+    <div style="font-size:12.5px;color:var(--muted);line-height:2">
+      · 版本 v0.4<br>· 所有音乐 / 封面均由程序实时生成<br>· 同一张唱片永远听到同一首歌
+    </div>
+  </div>
+</div>
+
+<div id="scr-report" class="screen"></div>
+<div id="scr-shop" class="screen"></div>
+
+<!-- ============ 通用弹窗 ============ -->
+<div id="modal" class="modal"><div class="modal-box" id="modalBox"></div></div>
+<canvas id="fx"></canvas>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* v19：CDN 离线兜底。若外网 CDN 不可达，自动加载同目录的 three.min.js，
+   避免整个游戏因为一个 CDN 挂掉而白屏。 */
+if(typeof THREE === 'undefined'){
+  document.write('<script src="three.min.js"><\/script>');
+}
+</script>
+<script src="story.js"></script>
+<script>
+/* =========================================================================
+   唱片店模拟器 v0.4  —  主程序
+   ========================================================================= */
+'use strict';
+
+/* ------------------------- 0. 工具 ------------------------- */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
+const mtof  = m => 440 * Math.pow(2,(m-69)/12);
+const wait = ms => { if(window._pauseCtrl && window._pauseCtrl.paused && window._pauseCtrl.promise){ return window._pauseCtrl.promise.then(function(){ return new Promise(function(r){ setTimeout(r, ms); }); }); } return new Promise(function(r){ setTimeout(r, ms); }); };
+const $     = id => document.getElementById(id);
+const rnd   = n => Math.floor(Math.random()*n);
+
+/* ------------------------- 1. 唱片数据 ------------------------- */
+const NAME_A = ['雨夜','午夜','失重','霓虹','旧','漂浮','破碎','静止','沉默','琥珀','深蓝','夏日','黄昏','白噪','孤岛','银河','清晨','锈色','褪色','回声','潮湿','零度','逆光','缓慢'];
+const NAME_B = ['木吉他','机房','独白','高速公路','档案','信号','房间','走廊','车站','胶片','舞厅','电台','邮局','花园','列车','漩涡','灯塔','钟摆','碎片','密码','萤火','雨伞','磁带','天际线'];
+
+const GENRES = ['民谣','电子','摇滚','爵士','Lo-Fi','钢琴','后摇','City Pop','氛围','朋克'];
+const MOODS  = ['怀旧','宁静','温暖','孤独','热烈','忧郁','希望','迷幻','活力','思念'];
+
+/* v28：GENRE_SCALE 与 SCALES 已随「按风格分派的编曲引擎」一起下移到作曲器
+   附近定义（那里还引入了 blues/lydian/mixo/aeolian 等新音阶）。
+   此处只保留封面配色表。 */
+const GENRE_COLORS = {
+  '民谣':     ['#ffb26b','#5c2f16'],
+  '电子':     ['#5fe8ff','#1b0b3a'],
+  '摇滚':     ['#ff2e88','#2a0a1a'],
+  '爵士':     ['#ffd166','#3a2408'],
+  'Lo-Fi':    ['#c9a0ff','#241436'],
+  '钢琴':     ['#9fd8ff','#0e2033'],
+  '后摇':     ['#7b8cff','#101433'],
+  'City Pop': ['#ff9ecb','#33102a'],
+  '氛围':     ['#8affd6','#0b2b24'],
+  '朋克':     ['#ff5a3c','#2b0d06']
+};
+
+/* 风格 → 音阶/调式优先采用 GENRE_STYLE 的设定，颜色沿用 GENRE_COLORS。
+   注意：必须定义在 TRACKS 之前 —— TRACKS 生成时会用它填 scaleName。
+   v28 扩充了音阶种类：aeolian(自然小调)/mixo(混合利底亚)/lydian(利底亚)，
+   不同风格用不同调式，这是"同质化"问题的一半解法（另一半是编曲分派）。 */
+const GENRE_SCALE = {
+  '民谣':'major','电子':'aeolian','摇滚':'mixo','爵士':'dorian','Lo-Fi':'dorian',
+  '钢琴':'major','后摇':'aeolian','City Pop':'lydian','氛围':'penta','朋克':'mixo'
+};
+
+const TRACKS = (function(){
+  const out = [];
+  for(let i=1;i<=100;i++){
+    const r = mulberry32(1000 + i*7919);
+    const genre = GENRES[Math.floor(r()*GENRES.length)];
+    const moodN = r() < 0.55 ? 1 : 2;
+    const moods = [];
+    let guard = 0;
+    while(moods.length < moodN && guard++ < 40){
+      const m = MOODS[Math.floor(r()*MOODS.length)];
+      if(!moods.includes(m)) moods.push(m);
+    }
+    const name = NAME_A[Math.floor(r()*NAME_A.length)] + NAME_B[Math.floor(r()*NAME_B.length)];
+    const bpm  = 60 + Math.floor(r()*80);
+    const rootMidi = 48 + Math.floor(r()*12);
+    const rr = r();
+    const rarity = rr < 0.05 ? 3 : (rr < 0.25 ? 2 : 1);
+    out.push({
+      id:i, name, genre, moods, bpm, rootMidi,
+      seed: 7777 + i*7919,
+      rarity,
+      scaleName: GENRE_SCALE[genre] || 'minor',
+      colors: GENRE_COLORS[genre],
+      basePrice: Math.round(55 + r()*75)
+    });
+  }
+  return out;
+})();
+
+const TRACK_BY_ID = {};
+TRACKS.forEach(t=>TRACK_BY_ID[t.id]=t);
+
+/* ------------------------- 2. 封面绘制 ------------------------- */
+const coverCache = new Map();
+
+function drawCover(ctx, S, track){
+  const r = mulberry32(track.seed);
+  const [c1,c2] = track.colors;
+  ctx.fillStyle = c2; ctx.fillRect(0,0,S,S);
+  const pat = Math.floor(r()*5);
+
+  if(pat===0){                       // 同心圆
+    for(let i=13;i>=0;i--){
+      ctx.beginPath();
+      ctx.arc(S/2,S/2, S*0.048*i, 0, Math.PI*2);
+      ctx.fillStyle = i%2 ? c1 : c2;
+      ctx.fill();
+    }
+  } else if(pat===1){                // 斜条纹
+    ctx.save();
+    ctx.translate(S/2,S/2); ctx.rotate(-Math.PI/7); ctx.translate(-S/2,-S/2);
+    for(let i=-16;i<40;i++){
+      ctx.fillStyle = i%2 ? c1 : 'rgba(0,0,0,.22)';
+      ctx.fillRect(0, i*S*0.062, S, S*0.031);
+    }
+    ctx.restore();
+  } else if(pat===2){                // 大圆
+    ctx.fillStyle = c1;
+    ctx.beginPath(); ctx.arc(S*0.5,S*0.48,S*0.33,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.arc(S*0.5,S*0.48,S*0.17,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.14)';
+    ctx.beginPath(); ctx.arc(S*0.5,S*0.48,S*0.08,0,Math.PI*2); ctx.fill();
+  } else if(pat===3){                // 点阵
+    const step = S/15;
+    for(let y=0;y<15;y++) for(let x=0;x<15;x++){
+      if((x+y)%2===0){
+        ctx.fillStyle = c1;
+        ctx.beginPath();
+        ctx.arc(x*step+step/2, y*step+step/2, step*(0.18+r()*0.16), 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+  } else {                           // 波纹
+    ctx.lineWidth = S*0.012;
+    for(let i=1;i<=24;i++){
+      ctx.strokeStyle = i%2 ? c1 : 'rgba(255,255,255,.13)';
+      ctx.beginPath();
+      ctx.arc(S*0.5,S*0.5, S*0.042*i, 0, Math.PI*2);
+      ctx.stroke();
+    }
+  }
+
+  // 标题条
+  ctx.fillStyle = 'rgba(10,6,18,.78)';
+  ctx.fillRect(0, S*0.755, S, S*0.245);
+  ctx.fillStyle = c1;
+  ctx.fillRect(0, S*0.755, S, S*0.018);
+  ctx.fillStyle = '#f2ede4';
+  ctx.font = '900 ' + Math.round(S*0.078) + 'px sans-serif';
+  ctx.fillText(track.name, S*0.06, S*0.862);
+  ctx.font = Math.round(S*0.048) + 'px sans-serif';
+  ctx.fillStyle = 'rgba(200,190,230,.85)';
+  ctx.fillText(track.genre + ' · ' + track.moods.join(' / '), S*0.06, S*0.935);
+}
+
+function getCoverCanvas(track, size){
+  size = size || 512;
+  const key = track.id + '_' + size;
+  if(coverCache.has(key)) return coverCache.get(key);
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  drawCover(c.getContext('2d'), size, track);
+  coverCache.set(key, c);
+  return c;
+}
+
+/* ------------------------- 3. 音频引擎 ------------------------- */
+const AudioEngine = {
+  ctx:null, master:null, analyser:null, freq:null, trackOut:null, noiseBuf:null,
+
+  init(){
+    if(this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    this.ctx = new AC();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.55;
+    this.analyser = this.ctx.createAnalyser();
+    this.analyser.fftSize = 256;
+    this.freq = new Uint8Array(this.analyser.frequencyBinCount);
+    this.master.connect(this.analyser);
+    this.analyser.connect(this.ctx.destination);
+  },
+
+  noise(){
+    if(this.noiseBuf) return this.noiseBuf;
+    const ctx = this.ctx, len = ctx.sampleRate * 1.0;
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i] = Math.random()*2-1;
+    this.noiseBuf = buf;
+    return buf;
+  },
+
+  stop(){
+    if(!this.ctx) return;
+    if(this.trackOut){
+      const t = this.ctx.currentTime, o = this.trackOut;
+      try{
+        o.gain.cancelScheduledValues(t);
+        o.gain.setValueAtTime(o.gain.value, t);
+        o.gain.linearRampToValueAtTime(0, t+0.08);
+      }catch(e){}
+      setTimeout(()=>{ try{o.disconnect();}catch(e){} }, 260);
+      this.trackOut = null;
+    }
+  },
+
+  play(track, seconds, offset){
+    this.init();
+    if(!this.ctx) return;
+    /* v28：只有实时上下文才需要（且才允许）resume。
+       OfflineAudioContext 的 state 也是 'suspended'，但 resume() 会抛
+       "cannot resume an offline context that has not started" ——
+       而且是异步 reject，try/catch 抓不到，会变成未处理的 Promise 警告。
+       离线渲染（工具/测试会复用本方法）因此被噪声污染，故加上类型判断。 */
+    if(this.ctx.state === 'suspended' && typeof this.ctx.startRendering !== 'function'){
+      const p = this.ctx.resume();
+      if(p && p.catch) p.catch(function(){});
+    }
+    offset = offset || 0;
+    this.stop();
+
+    const ctx = this.ctx;
+    const t0  = ctx.currentTime + 0.1;
+    const out = ctx.createGain();
+    out.gain.value = 0;
+    out.gain.linearRampToValueAtTime(1, t0 + 0.2);
+    out.connect(this.master);
+    this.trackOut = out;
+
+    // 延迟回声
+    const delay = ctx.createDelay(1.2);
+    delay.delayTime.value = 60/track.bpm * 0.75;
+    const fb = ctx.createGain(); fb.gain.value = 0.28;
+    const wet = ctx.createGain(); wet.gain.value = 0.3;
+    delay.connect(fb); fb.connect(delay);
+    delay.connect(wet); wet.connect(out);
+
+    const events = composeTrack(track, seconds);
+    events.forEach(ev => {
+      const evT = ev.t - offset; if (evT < -0.15) return; const st = t0 + Math.max(0, evT);
+      if(st > t0 + seconds + 0.2) return;
+
+      if(ev.kind === 'kick'){
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(130, st);
+        o.frequency.exponentialRampToValueAtTime(42, st + 0.12);
+        g.gain.setValueAtTime(ev.v, st);
+        g.gain.exponentialRampToValueAtTime(0.001, st + 0.22);
+        o.connect(g); g.connect(out);
+        o.start(st); o.stop(st + 0.25);
+        return;
+      }
+      if(ev.kind === 'snare' || ev.kind === 'hat'){
+        const s = ctx.createBufferSource(); s.buffer = this.noise();
+        const f = ctx.createBiquadFilter();
+        f.type = ev.kind === 'snare' ? 'bandpass' : 'highpass';
+        f.frequency.value = ev.kind === 'snare' ? 1800 : 7000;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(ev.v, st);
+        g.gain.exponentialRampToValueAtTime(0.001, st + ev.d);
+        s.connect(f); f.connect(g); g.connect(out);
+        s.start(st); s.stop(st + ev.d + 0.05);
+        return;
+      }
+      // 普通音符
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = ev.wave || 'square';
+      o.frequency.value = ev.f;
+      /* v28：支持每个音符自带起音/释音（作曲器按音色给出）。
+         没有这两个字段时回落到旧行为（12ms 起音 / 指数衰减到音符尾），
+         因此这条改动对老调用方是向后兼容的。 */
+      const atk = (typeof ev.atk === 'number') ? Math.max(0.002, ev.atk) : 0.012;
+      const rel = (typeof ev.rel === 'number') ? Math.max(0.02, ev.rel) : 0;
+      g.gain.setValueAtTime(0.0001, st);
+      g.gain.linearRampToValueAtTime(ev.v, st + atk);
+      if(rel > 0){
+        /* 有释音：保持到 "音符末 - rel"，再做一段线性收尾（听感更自然，
+           长音不会像被突然掐断） */
+        const holdT = Math.max(st + atk, st + ev.d - rel);
+        g.gain.setValueAtTime(ev.v, holdT);
+        g.gain.linearRampToValueAtTime(0.0001, st + ev.d);
+      } else {
+        g.gain.exponentialRampToValueAtTime(0.0001, st + ev.d);
+      }
+      o.connect(g);
+      g.connect(out);
+      if(ev.lead) g.connect(delay);
+      o.start(st); o.stop(st + ev.d + 0.06);
+    });
+  },
+
+  volume(v){ if(this.master) this.master.gain.value = v; }
+};
+
+/* -------- 作曲器 v2（按风格分派的程序化编曲引擎） --------
+   ── 为什么要重写 ──
+   旧版 composeTrack 只有一套固定逻辑：
+     prog = [0,5,3,4]（永远是同一个和弦进行）
+     RHYTHMS 5 种固定节奏型
+     和声垫永远是 [0,2,4]（根音三和弦）
+     鼓组永远是 kick/snare/hat 的固定位置
+   于是 10 种风格听起来都差不多，玩家反馈"随机歌曲同质化太严重"。
+
+   ── 新架构 ──
+   把"编曲"拆成 6 个可随机化的维度，每个风格给一套候选池：
+     1) 和弦进行   prog    —— 每风格 3~4 条，长度 4/8 小节，含七/九/十一音色彩
+     2) 和声节奏   comp    —— 垫音落在哪些拍（整小节/切分/半小节脉冲）
+     3) 低音织体   bass    —— 长音 / 每拍走动 / 八分律动 / 交替根五度
+     4) 鼓组       drums   —— 有无、四踩、backbeat、shuffle、breakbeat
+     5) 音色       voicing —— 波形 / 音量 / 起音 / 释音 / 叠接
+     6) 旋律生成   melody  —— 动机发展（陈述→模进→转位→变奏），而非逐音乱抽
+
+   组合数：prog(3~4) × comp(3~6) × bass(3~5) × drums(3~6) × voicing(3~5) × 动机(∞)
+          ⇒ 每风格至少 100+ 种，十风格合计 >10⁴；叠加随机旋律与韵律后实际近乎无限。
+
+   ── 关键约束：种子可分享 ──
+   整张专辑（名称/风格/情绪/BPM/根音/颜色/封面/曲子）全部只由 seed 决定：
+   所有随机数都来自同一个 mulberry32(seed)，没有任何 Math.random()。
+   因此同一个 seed 在任何设备、任何时间都必然复现同一张专辑 —— 分享种子即分享专辑。 */
+
+/* --- 音阶（含爵士/蓝调等色彩音阶，供不同风格取用） --- */
+const SCALES = {
+  major:  [0,2,4,5,7,9,11],
+  minor:  [0,2,3,5,7,8,10],
+  dorian: [0,2,3,5,7,9,10],
+  penta:  [0,3,5,7,10],
+  blues:  [0,3,5,6,7,10],
+  lydian: [0,2,4,6,7,9,11],
+  mixo:   [0,2,4,5,7,9,10],   /* 属调 —— 摇滚/朋克常用 */
+  aeolian:[0,2,3,5,7,8,10]
+};
+
+function scaleMidi(root, scale, degree){
+  const oct = Math.floor(degree / scale.length);
+  const idx = ((degree % scale.length) + scale.length) % scale.length;
+  return root + oct*12 + scale[idx];
+}
+
+/* --- 音色库：波形 + 音量 + 包络 + 叠接 --- */
+const VOICINGS = {
+  soft:    { leadWave:'sine',     leadVol:0.14, bassWave:'sine',     bassVol:0.20, attack:0.05, release:0.55, leadLeg:1.06, bassLeg:1.20 },
+  warm:    { leadWave:'triangle', leadVol:0.12, bassWave:'triangle', bassVol:0.19, attack:0.02, release:0.40, leadLeg:1.02, bassLeg:1.10 },
+  bright:  { leadWave:'square',   leadVol:0.085,bassWave:'triangle', bassVol:0.17, attack:0.008,release:0.30, leadLeg:0.94, bassLeg:1.00 },
+  retro:   { leadWave:'square',   leadVol:0.095,bassWave:'square',   bassVol:0.15, attack:0.005,release:0.26, leadLeg:0.92, bassLeg:0.96 },
+  airy:    { leadWave:'triangle', leadVol:0.115,bassWave:'sine',     bassVol:0.22, attack:0.09, release:0.62, leadLeg:1.10, bassLeg:1.30 },
+  punchy:  { leadWave:'sawtooth', leadVol:0.070,bassWave:'square',   bassVol:0.16, attack:0.004,release:0.22, leadLeg:0.90, bassLeg:0.94 },
+  glass:   { leadWave:'sine',     leadVol:0.150,bassWave:'triangle', bassVol:0.18, attack:0.012,release:0.48, leadLeg:1.04, bassLeg:1.12 },
+  wooden:  { leadWave:'triangle', leadVol:0.125,bassWave:'triangle', bassVol:0.21, attack:0.03, release:0.36, leadLeg:0.98, bassLeg:1.04 }
+};
+
+/* --- 每风格一套编曲配置 ---
+   prog  : 和弦进行（音阶级数，可含七/九/十一音）
+   comp  : 垫音的音符偏移（相对和弦根，音阶级数）+ 落点模式名
+   bass  : 低音织体类型
+   drums : 鼓组类型
+   swing : 摇摆量（0=平均，>0 让八分附点化 —— 爵士/Lo-Fi 用）
+   voice : VOICINGS 里的音色候选                                       */
+const GENRE_STYLE = {
+  '民谣': {
+    scale:'major',
+    prog: [[0,3,4,0],[0,5,3,4],[0,4,5,3],[0,2,4,5]],
+    comp: [['whole',[0,2,4]], ['half',[0,2,4]], ['whole',[0,2,4,6]], ['half',[0,2,4,6]]],
+    bass: ['root5th','walk8th','long'],
+    drums: ['none','soft','brush','sparse','train'],
+    swing: 0, voice:['wooden','soft','warm']
+  },
+  '电子': {
+    scale:'aeolian',
+    prog: [[0,5,3,4],[0,3,5,4],[0,6,5,4],[0,3,6,4]],
+    comp: [['sync',[0,2,4]], ['pulse8',[0,2,4]], ['half',[0,2,4,6]], ['sync',[0,2,4,6]]],
+    bass: ['pulse8','walk8th','octave'],
+    drums: ['four','breakbeat','electro','trap'],
+    swing: 0, voice:['punchy','bright','glass']
+  },
+  '摇滚': {
+    scale:'mixo',
+    prog: [[0,3,4,0],[0,6,3,4],[0,4,5,3],[0,3,6,4]],
+    comp: [['half',[0,2,4]], ['sync',[0,2,4]], ['whole',[0,2,4]], ['pulse8',[0,2,4]]],
+    bass: ['walk8th','root5th','octave'],
+    drums: ['rock','four','backbeat','kickroll','halftime'],
+    swing: 0, voice:['punchy','retro','bright']
+  },
+  '爵士': {
+    scale:'dorian',
+    prog: [[0,4,1,5],[0,3,1,4],[0,5,1,4],[2,5,0,4]],
+    comp: [['sync',[0,2,4,6]], ['half',[0,2,4,6]], ['whole',[0,3,5,7]], ['sync',[0,2,4,7]]],
+    bass: ['walk','walk8th','root5th','octave'],
+    drums: ['brush','shuffle','soft','bossa'],
+    swing: 0.16, voice:['warm','wooden','glass']
+  },
+  'Lo-Fi': {
+    scale:'dorian',
+    prog: [[0,3,5,4],[0,4,3,5],[0,5,3,4],[0,2,3,4]],
+    comp: [['half',[0,2,4,6]], ['whole',[0,2,4]], ['sync',[0,2,4,6]], ['arp',[0,2,4,6]]],
+    bass: ['long','root5th','walk'],
+    drums: ['soft','brush','none','halftime','tick'],
+    swing: 0.10, voice:['soft','warm','wooden']
+  },
+  '钢琴': {
+    scale:'major',
+    prog: [[0,4,5,3],[0,3,4,5],[0,5,3,4],[0,4,3,5]],
+    comp: [['arp',[0,2,4,7]], ['whole',[0,2,4]], ['arp',[0,2,4,6]], ['half',[0,2,4,6]]],
+    bass: ['long','walk','root5th'],
+    drums: ['none','soft','sparse','tick','train'],
+    swing: 0, voice:['glass','soft','wooden']
+  },
+  '后摇': {
+    scale:'aeolian',
+    prog: [[0,5,3,4],[0,3,6,4],[0,4,5,3],[0,6,3,5]],
+    comp: [['whole',[0,2,4,6]], ['half',[0,2,4]], ['sync',[0,2,4]], ['whole',[0,3,5,7]]],
+    bass: ['long','walk8th','root5th'],
+    drums: ['soft','rock','brush','sparse','halftime'],
+    swing: 0, voice:['airy','warm','glass']
+  },
+  'City Pop': {
+    scale:'lydian',
+    prog: [[0,3,1,4],[0,5,3,4],[0,4,1,5],[0,3,5,1]],
+    comp: [['sync',[0,2,4,6]], ['pulse8',[0,2,4]], ['half',[0,2,4,7]], ['arp',[0,2,4,7]]],
+    bass: ['walk8th','octave','root5th'],
+    drums: ['backbeat','four','soft','latin'],
+    swing: 0.06, voice:['glass','bright','warm']
+  },
+  '氛围': {
+    scale:'penta',
+    prog: [[0,3,4,1],[0,4,3,1],[0,1,3,4],[0,3,1,4]],
+    comp: [['whole',[0,2,4,7]], ['whole',[0,3,5]], ['half',[0,2,4,6]], ['whole',[0,2,4,6]]],
+    bass: ['long'],
+    drums: ['none','soft','sparse','tick'],
+    swing: 0, voice:['airy','soft','glass']
+  },
+  '朋克': {
+    scale:'mixo',
+    prog: [[0,4,3,0],[0,3,4,0],[0,6,4,0],[0,3,6,4]],
+    comp: [['pulse8',[0,2,4]], ['sync',[0,2,4]], ['whole',[0,2,4]], ['half',[0,2,4]]],
+    bass: ['walk8th','octave','pulse8'],
+    drums: ['rock','backbeat','four','march','kickroll'],
+    swing: 0, voice:['retro','punchy','bright']
+  }
+};
+
+/* 风格 → 音阶映射见文件上方（紧邻 TRACKS 定义处），此处不再重复声明。 */
+
+/* --- 鼓组模式：返回一小节内的事件（beat 位置，单位=拍） ---
+   每风格给 3~5 种候选。鼓组是"风格脸"最明显的地方，
+   所以这里按流派特征给足差异（四踩 / backbeat / shuffle / breakbeat / bossa…）。 */
+function drumPattern(kind, r){
+  const K = [], S = [], H = [], G = [];   /* G = ghost note（极轻的小鼓点缀） */
+  switch(kind){
+    case 'none':
+      break;
+    case 'soft':
+      if(r()<0.7) K.push(0);
+      if(r()<0.4) K.push(2);
+      S.push(2);
+      for(let i=0;i<8;i++) if(r()<0.35) H.push(i*0.5);
+      break;
+    case 'brush':
+      K.push(0); if(r()<0.6) K.push(2.5);
+      S.push(2);
+      for(let i=0;i<8;i++) H.push(i*0.5);
+      if(r()<0.7) G.push(1.5 + (r()<0.5?0.25:0));
+      break;
+    case 'four':
+      /* v28：底鼓四踩 + 小鼓 2/4 是这个鼓型的"身份"，必须固定，否则就不是四踩了。
+         变化只能放在装饰层 —— 踩镲的开合与鬼音落点，真鼓手每小节也是这么弹的。 */
+      K.push(0,1,2,3);
+      S.push(1,3);
+      for(let i=0;i<8;i++){ if(i%2===0 || r()<0.72) H.push(i*0.5); }
+      if(r()<0.5) G.push(2.75);
+      if(r()<0.35) H.push(3.75);
+      if(r()<0.30) G.push(0.75);
+      break;
+    case 'rock':
+      K.push(0); if(r()<0.5) K.push(2.5); K.push(2);
+      S.push(1,3);
+      for(let i=0;i<8;i++) if(i%2===1||r()<0.6) H.push(i*0.5);
+      if(r()<0.6) K.push(3.75);
+      break;
+    case 'backbeat':
+      K.push(0); if(r()<0.75) K.push(2);
+      S.push(1,3);
+      for(let i=0;i<8;i++) if(r()<0.7) H.push(i*0.5);
+      if(r()<0.6) G.push(1.75);
+      break;
+    case 'shuffle':
+      /* 三连音感的 hi-hat：落在 0, 0.67, 1, 1.67 ...
+         v28：原来 8 个帽子位置全固定，导致整个鼓型零变化。
+         真实 shuffle 里三连音的中间那个音是"有时点有时不点"的，
+         所以这里随机挑一个弱位省略（不是固定省最后一个，否则又变成确定型）。 */
+      K.push(0); if(r()<0.5) K.push(2);
+      S.push(2);
+      for(let i=0;i<4;i++){ H.push(i); H.push(i+2/3); }
+      (function(){
+        const weak = H.map((x,i)=>[x,i]).filter(p => Math.abs(p[0]%1 - 2/3) < 1e-6);
+        if(weak.length && r()<0.55){
+          const pick = weak[Math.floor(r()*weak.length)][1];
+          H.splice(pick,1);
+        }
+      })();
+      if(r()<0.40) G.push(2 + 2/3);
+      break;
+    case 'breakbeat':
+      K.push(0,2.5);
+      S.push(1,3); if(r()<0.5) S.push(2.75);
+      for(let i=0;i<16;i++) if(r()<0.30) H.push(i*0.25);
+      break;
+    case 'electro':
+      /* v28：底鼓 0/2 与反拍小鼓是电子的身份，固定；
+         原来 16 分帽子全固定在奇数位 → 零变化。改为按概率取舍 + 偶发开镲。 */
+      K.push(0,2); if(r()<0.6) K.push(3.5);
+      S.push(1,3);
+      for(let i=0;i<16;i++){ if(i%2===1 && (i%4===1 || r()<0.7)) H.push(i*0.25); }
+      if(r()<0.4) H.push(3.75);
+      if(r()<0.35) G.push(2.75);
+      break;
+    /* --- v28 新增：补足"变化量"，让鼓组不再单调 --- */
+    case 'halftime':                    /* 半速感：小鼓只在第 3 拍 */
+      K.push(0); if(r()<0.5) K.push(2.5);
+      S.push(2);
+      for(let i=0;i<8;i++) if(r()<0.5) H.push(i*0.5);
+      break;
+    case 'bossa':                       /* 波萨诺瓦：两小节循环的拉丁节奏 */
+      K.push(0); if(r()<0.7) K.push(1.5); if(r()<0.7) K.push(3);
+      S.push(1.5); if(r()<0.6) S.push(3.5);
+      for(let i=0;i<8;i++) if(r()<0.8) H.push(i*0.5);
+      G.push(2.25);
+      break;
+    case 'latin':
+      /* v28：拉丁的骨架（底鼓 0/2.5、小鼓 1/3）是身份，保留；
+         但原来 hi-hat 落点 6 个全固定 → 零变化。改为在骨架外
+         按概率叠加弱位切分音，这才是拉丁味道的来源。 */
+      K.push(0, 2.5);
+      S.push(1, 3);
+      [0,0.75,1.5,2,2.75,3.5].forEach(x=>H.push(x));
+      if(r()<0.6){ H.push(1.25); }
+      if(r()<0.5){ H.push(3.25); }
+      if(r()<0.35){ H.push(0.5); }
+      if(r()<0.8) G.push(0.75 + (r()<0.5?0:1.5));
+      break;
+    case 'march':
+      /* v28：进行曲"每拍都响"是它的定义，一动就不像了。
+         所以只在踩镲与鬼音上做变化（军鼓加花 / 帽子开合）。 */
+      K.push(0,1,2,3);
+      S.push(0,1,2,3);
+      for(let i=0;i<8;i++){ H.push(i*0.5); }
+      if(r()<0.35) H.splice(Math.floor(r()*H.length),1);
+      if(r()<0.45) G.push(2.5 + (r()<0.5?0:0.25));
+      if(r()<0.30) G.push(0.5);
+      break;
+    case 'trap':
+      K.push(0, 1.5, 2.5);
+      S.push(2);
+      for(let i=0;i<32;i++) if(r()<0.22) H.push(i*0.125);
+      break;
+    case 'kickroll':                    /* 底鼓滚奏：摇滚/朋克常见 */
+      K.push(0); if(r()<0.6) K.push(1.5);
+      K.push(2, 2.75); if(r()<0.5) K.push(3.25);
+      S.push(1,3);
+      for(let i=0;i<8;i++) if(r()<0.55) H.push(i*0.5);
+      break;
+    case 'sparse':                      /* 极简：只留骨架，适合后摇/氛围 */
+      K.push(0);
+      if(r()<0.5) S.push(2.5);
+      if(r()<0.5) H.push(1); if(r()<0.5) H.push(3);
+      break;
+    /* --- v28 第二批：给"安静流派"补鼓型 ---
+       钢琴 / 氛围 / Lo-Fi 原来的池只有 2~3 套鼓，200 张专辑内就饱和了
+       （实测 67%），玩家听到的"重复感"主要来自这里。 */
+    case 'tick':                        /* 只有轻微的节奏骨架，像节拍器融进背景 */
+      if(r()<0.8) K.push(0);
+      if(r()<0.45) S.push(2 + (r()<0.5?0:0.5));
+      for(let i=0;i<8;i++){ if(i%4===2 || r()<0.28) H.push(i*0.5); }
+      if(r()<0.5) G.push(1 + (r()<0.5?0.5:0));
+      if(r()<0.3) G.push(3.25);
+      break;
+    case 'train':                       /* 民谣的"火车节奏"：稳定的八分推进，温暖 */
+      if(r()<0.75) K.push(0); if(r()<0.6) K.push(2);
+      if(r()<0.5) S.push(2);
+      for(let i=0;i<8;i++){ H.push(i*0.5); }
+      if(r()<0.4) H.splice(Math.floor(r()*H.length),1);
+      if(r()<0.45) G.push(1.5 + (r()<0.5?0:1));
+      if(r()<0.35) K.push(3 + (r()<0.5?0:0.5));
+      break;
+  }
+  return { K, S, H, G };
+}
+
+/* --- 低音织体：返回一小节内的 [拍, 音级数偏移, 时值(拍)] --- */
+function bassLine(kind, deg, r){
+  const out = [];
+  switch(kind){
+    case 'long':
+      out.push([0, deg, 4]);
+      break;
+    case 'root5th':
+      out.push([0, deg, 2]); out.push([2, deg+4, 2]);
+      break;
+    case 'walk':                      /* 每拍一个音，级进 + 跳进 */
+      out.push([0, deg, 1]);
+      out.push([1, deg + (r()<0.5?2:4), 1]);
+      out.push([2, deg + (r()<0.5?4:6), 1]);
+      out.push([3, deg + (r()<0.5?-1:2), 1]);
+      break;
+    case 'walk8th':                   /* 八分律动，根音为主 */
+      for(let i=0;i<8;i++){
+        const off = (i===0) ? 0 : (r()<0.45 ? 0 : (r()<0.5?4:(r()<0.5?7:-1)));
+        out.push([i*0.5, deg+off, 0.5]);
+      }
+      break;
+    case 'pulse8':
+      for(let i=0;i<8;i++) out.push([i*0.5, deg + (i%2?(r()<0.3?7:0):0), 0.5]);
+      break;
+    case 'octave':
+      out.push([0, deg, 1]); out.push([1, deg+7, 1]);
+      out.push([2, deg, 1]); out.push([3, deg+(r()<0.5?7:4), 1]);
+      break;
+  }
+  return out;
+}
+
+/* --- 乐句/动机生成 ---
+   旧版是"逐音丢骰子"，听不出句子结构，这也是同质化的来源。
+   新版先造一个小动机（3~5 个音级数），再用音乐上真实的发展手法变化：
+     transpose 模进（整体平移）  invert 转位（方向反转）
+     retro 逆行  ornament 加装饰音  extend 尾音拉长
+   每个 4 小节乐句 = 动机陈述 + 一个发展 + 收束，因此句子有"呼吸"。       */
+function makeMotif(r, style){
+  const len = 3 + Math.floor(r()*3);            /* 3~5 个音 */
+  const shape = [];
+  const pool = [0,2,4,1,5,7];
+  shape.push(0);                                 /* 动机总从和弦音起 */
+  for(let i=1;i<len;i++){
+    const stepUp = r()<0.5;
+    shape.push(shape[i-1] + (stepUp ? pool[Math.floor(r()*pool.length)] : -pool[Math.floor(r()*pool.length)]));
+  }
+  return shape;
+}
+function developMotif(motif, r){
+  const k = Math.floor(r()*4);
+  if(k===0) return motif.slice();                                  /* 原样陈述 */
+  if(k===1) return motif.map(d=>d + (r()<0.5?2:-2));               /* 模进 */
+  if(k===2) return motif.map((d,i)=> i===0 ? d : motif[0]-(d-motif[0])); /* 转位 */
+  return motif.slice().reverse();                                  /* 逆行 */
+}
+
+function composeTrack(track, seconds){
+  const r = mulberry32(track.seed ^ 0x9e3779b9);
+  const style = GENRE_STYLE[track.genre] || GENRE_STYLE['民谣'];
+  const scaleName = style.scale || track.scaleName || 'minor';
+  const scale = SCALES[scaleName] || SCALES.minor;
+  const beat = 60 / track.bpm;
+  const bar  = beat * 4;
+  const root = track.rootMidi;
+  const bars = Math.ceil(seconds / bar) + 1;
+  const evs  = [];
+
+  /* 每次播放都从候选池里挑一套 —— 同一张唱片每次听都一致（seed 固定） */
+  const prog  = style.prog[Math.floor(r()*style.prog.length)];
+  const comp  = style.comp[Math.floor(r()*style.comp.length)];
+  const bassK = style.bass[Math.floor(r()*style.bass.length)];
+  const drumK = style.drums[Math.floor(r()*style.drums.length)];
+  const vName = style.voice[Math.floor(r()*style.voice.length)];
+  const V     = VOICINGS[vName] || VOICINGS.warm;
+  const swing = style.swing || 0;
+
+  /* 每隔 4 小节换一个新动机，形成"乐句"而不仅是"小节" */
+  let motif = makeMotif(r, style);
+  const motifOfBar = b => {
+    if(b % 4 === 0) motif = (b === 0) ? motif : developMotif(motif, r);
+    return motif;
+  };
+
+  for(let b=0;b<bars;b++){
+    const deg = prog[b % prog.length];
+    const mt  = motifOfBar(b);
+    const barT = b*bar;
+    const isLast = (b % 4 === 3);
+
+    /* ---- 和声垫 ---- */
+    const offsets = comp[1];
+    if(comp[0] === 'whole'){
+      offsets.forEach(n=>{
+        evs.push({ t:barT, f:mtof(scaleMidi(root, scale, deg+n)),
+                   d:bar*0.96*V.leadLeg, v:V.leadVol*0.36, wave:V.leadWave,
+                   atk:V.attack*1.6, rel:V.release });
+      });
+    } else if(comp[0] === 'half'){
+      for(let h=0;h<2;h++){
+        offsets.forEach(n=>{
+          evs.push({ t:barT+h*beat*2, f:mtof(scaleMidi(root, scale, deg+n)),
+                     d:beat*1.9*V.leadLeg, v:V.leadVol*0.32, wave:V.leadWave,
+                     atk:V.attack*1.4, rel:V.release });
+        });
+      }
+    } else if(comp[0] === 'pulse8'){
+      for(let p=0;p<8;p++){
+        const n = offsets[p % offsets.length];
+        evs.push({ t:barT+p*beat*0.5, f:mtof(scaleMidi(root, scale, deg+n)),
+                   d:beat*0.45*V.leadLeg, v:V.leadVol*0.25, wave:V.leadWave,
+                   atk:V.attack, rel:V.release });
+      }
+    } else if(comp[0] === 'sync'){
+      /* 切分：弱拍起音，最"活"的一种 */
+      [0, 1.5, 2.5, 3.5].forEach((bt,i)=>{
+        const n = offsets[i % offsets.length];
+        evs.push({ t:barT+bt*beat, f:mtof(scaleMidi(root, scale, deg+n)),
+                   d:beat*1.1*V.leadLeg, v:V.leadVol*0.30, wave:V.leadWave,
+                   atk:V.attack*1.2, rel:V.release });
+      });
+    } else if(comp[0] === 'arp'){
+      /* 琶音：4 个音级按 8 分上行铺开 */
+      for(let p=0;p<8;p++){
+        const n = offsets[p % offsets.length] + (p>=offsets.length?2:0);
+        evs.push({ t:barT+p*beat*0.5, f:mtof(scaleMidi(root, scale, deg+n)),
+                   d:beat*0.5*V.leadLeg, v:V.leadVol*0.28, wave:V.leadWave,
+                   atk:V.attack, rel:V.release });
+      }
+    }
+
+    /* ---- 低音 ---- */
+    bassLine(bassK, deg, r).forEach(([bt, dg, dur])=>{
+      /* 低音保持在中低音区，不跟着和弦一路抬高 */
+      let d = dg;
+      while(d > 6) d -= 7;
+      while(d < -3) d += 7;
+      evs.push({ t:barT+bt*beat, f:mtof(scaleMidi(root-12, scale, d)),
+                 d:dur*beat*V.bassLeg, v:V.bassVol*0.9, wave:V.bassWave,
+                 atk:V.attack, rel:V.release });
+    });
+
+    /* ---- 主旋律：动机发展 + 经过音，句尾留长音呼吸 ----
+       v28：在动机基础上补"经过音/邻音"装饰。这不只是为了丰富度——
+       它是音乐上本来就该做的事：两个音级间隔较大时，中间垫一个过渡音，
+       乐句会从"一跳一跳"变得连贯。副作用是音级种类自然增加。 */
+    const density = 0.52 + r()*0.30;
+    let slot = 0;
+    const totalSlots = 8;                 /* 一小节 8 个八分槽 */
+    mt.forEach((md, mi)=>{
+      /* 经过音：与前一音相隔 ≥3 个音级时，在中点插一个过渡音 */
+      if(mi > 0){
+        const gap = md - mt[mi-1];
+        if(Math.abs(gap) >= 3 && r() < 0.62){
+          const pass = mt[mi-1] + (gap > 0 ? 1 : -1) * Math.round(Math.abs(gap)/2);
+          const bt = slot * 0.5 - 0.25;
+          if(bt >= 0){
+            evs.push({
+              t: barT + bt*beat,
+              f: mtof(scaleMidi(root+12, scale, deg + pass)),
+              d: 0.3*beat*V.leadLeg, v: V.leadVol*0.66,
+              wave: V.leadWave, lead:true, atk:V.attack, rel:V.release
+            });
+          }
+        }
+      }
+      if(r() > density) { slot++; return; }
+      let bt = slot * 0.5;
+      if(swing > 0 && (slot % 2 === 1)) bt += swing*0.5;
+      const isTail = (mi === mt.length-1);
+      const dur = isTail ? (isLast ? 1.6 : 0.95) : (0.4 + r()*0.35);
+      evs.push({
+        t: barT + bt*beat,
+        f: mtof(scaleMidi(root+12, scale, deg + md)),
+        d: dur*beat*V.leadLeg,
+        v: V.leadVol*(isTail?0.95:0.86), wave: V.leadWave,
+        lead: true, atk: V.attack, rel: V.release
+      });
+      slot += 1 + Math.floor(r()*2);
+      if(slot >= totalSlots) slot = totalSlots - 1;
+    });
+    /* 句尾（第 4/8 小节）补一个高音长音做落句，并偶发加一个下邻音回绕 */
+    if(isLast){
+      evs.push({
+        t: barT + beat*2.5,
+        f: mtof(scaleMidi(root+12, scale, deg + (r()<0.5?4:7))),
+        d: beat*1.5*V.leadLeg, v:V.leadVol*0.9, wave:V.leadWave,
+        lead:true, atk:V.attack, rel:V.release
+      });
+      if(r() < 0.45){
+        evs.push({
+          t: barT + beat*3.6,
+          f: mtof(scaleMidi(root+12, scale, deg + 9)),
+          d: beat*0.4*V.leadLeg, v:V.leadVol*0.6, wave:V.leadWave,
+          lead:true, atk:V.attack, rel:V.release
+        });
+      }
+    }
+
+    /* ---- 鼓组 ----
+       v28：加两层变化，避免"整首鼓都一样"。
+         ① 每小节有约 28% 概率换用同风格的另一套鼓型（小节级变奏）
+         ② 每 4 小节结尾（乐句末）按概率插入 fill（过门）
+       这两点让鼓组在 60 首之间的落点组合数大幅上升。 */
+    if(drumK !== 'none'){
+      /* 小节变奏：从该风格的鼓型池里重抽（跳过 none，保持"有鼓"这件事不变）。
+         概率 0.42 —— 实测 0.28 时"唯一鼓组模式数"仍低于旧版（旧版是逐拍乱点缀），
+         提高后落点组合数反超，同时因为仍在同一风格的鼓型池内，听感不会跑偏。 */
+      let thisK = drumK;
+      if(r() < 0.42){
+        const pool = style.drums.filter(function(k){ return k !== 'none'; });
+        if(pool.length > 1) thisK = pool[Math.floor(r()*pool.length)];
+      }
+      const dp = drumPattern(thisK, r);
+      dp.K.forEach(bt => evs.push({ t:barT+bt*beat, f:0, d:0.22, v:0.30, kind:'kick' }));
+      dp.S.forEach(bt => evs.push({ t:barT+bt*beat, f:0, d:0.10, v:0.12, kind:'snare' }));
+      dp.H.forEach(bt => evs.push({ t:barT+bt*beat, f:0, d:0.03, v:0.045, kind:'hat' }));
+      (dp.G||[]).forEach(bt => evs.push({ t:barT+bt*beat, f:0, d:0.06, v:0.045, kind:'snare' }));
+      /* 乐句末过门：最后两拍加密小鼓/鼓 */
+      if(isLast && r() < 0.55){
+        const n = 3 + Math.floor(r()*3);
+        for(let i=0;i<n;i++){
+          const bt = 3 + i*(1/n);
+          evs.push({ t:barT+bt*beat, f:0, d:0.07, v:0.11, kind: r()<0.5?'snare':'kick' });
+        }
+      }
+    }
+  }
+  return evs;
+}
+
+/* ------------------------- 4. Three.js 场景 ------------------------- */
+let renderer, shopScene, shopCam, recScene, recCam, clock;
+const VIEW = { mode:'shop' };
+
+function initThree(){
+  renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias:true, alpha:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x0a0612, 1);
+
+  clock = new THREE.Clock();
+  buildShopScene();
+  buildRecordScene();
+  window.addEventListener('resize', onResize);
+  loop();
+}
+
+function onResize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h);
+  if(shopCam){ shopCam.aspect = w/h; shopCam.updateProjectionMatrix(); }
+  if(recCam){ recCam.aspect = w/h; recCam.updateProjectionMatrix(); }
+  const v = $('viz');
+  if(v){ v.width = Math.floor(w*0.6); v.height = Math.floor(h*0.6); }
+}
+
+/* -------- 店铺场景 v0.5 -------- */
+function buildShopScene(){
+  shopScene = new THREE.Scene();
+  shopScene.background = new THREE.Color(0x0a0612);
+  shopScene.fog = new THREE.FogExp2(0x0a0612, 0.042);
+  shopCam = new THREE.PerspectiveCamera(78, window.innerWidth/window.innerHeight, 0.1, 100);
+  shopCam.position.set(0, 1.55, 4.3); shopCam.lookAt(0, 1.0, -0.1);
+  shopScene.add(new THREE.HemisphereLight(0x4a2a6a, 0x1a0d2e, 0.55));
+  shopScene.add(new THREE.AmbientLight(0x8877cc, 0.35));
+  const L=(x,y,z,c,i,d)=>{const l=new THREE.PointLight(c,i,d||9,2);l.position.set(x,y,z);shopScene.add(l);return l;};
+  L(0,3.2,-1,0xffd9a0,1.3,12); L(-2.4,2.4,-1.6,0xff2e88,1.5); L(2.2,2.4,-1.6,0x5fe8ff,1.3);
+  L(1.8,1.4,0.6,0xffb070,0.9,6); L(4.2,1.7,1.0,0xffd166,1.5,8);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(16,16),new THREE.MeshStandardMaterial({color:0x2a1810,roughness:0.75,metalness:0.05}));
+  floor.rotation.x=-Math.PI/2; shopScene.add(floor);
+  const rug=new THREE.Mesh(new THREE.PlaneGeometry(5.4,3.2),new THREE.MeshStandardMaterial({color:0x3a0a20,roughness:0.95}));
+  rug.rotation.x=-Math.PI/2; rug.position.set(0,0.005,0.4); shopScene.add(rug);
+  const rugE=new THREE.Mesh(new THREE.PlaneGeometry(5.6,3.4),new THREE.MeshBasicMaterial({color:0x6a1030,transparent:true,opacity:0.35}));
+  rugE.rotation.x=-Math.PI/2; rugE.position.set(0,0.002,0.4); shopScene.add(rugE);
+  const wallB=new THREE.Mesh(new THREE.PlaneGeometry(16,8),new THREE.MeshStandardMaterial({color:0x1a0a26,roughness:1})); wallB.position.set(0,4,-4.5); shopScene.add(wallB);
+  const wallL=new THREE.Mesh(new THREE.PlaneGeometry(9,8),new THREE.MeshStandardMaterial({color:0x160823,roughness:1})); wallL.rotation.y=Math.PI/2; wallL.position.set(-4.5,4,0); shopScene.add(wallL);
+  const wallR=wallL.clone(); wallR.rotation.y=-Math.PI/2; wallR.position.set(4.5,4,0); shopScene.add(wallR);
+  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(16,16),new THREE.MeshStandardMaterial({color:0x120822,roughness:1})); ceil.rotation.x=Math.PI/2; ceil.position.y=4.2; shopScene.add(ceil);
+  const sc=document.createElement('canvas'); sc.width=512; sc.height=108; const sx=sc.getContext('2d');
+  sx.fillStyle='rgba(10,6,18,0.95)'; sx.fillRect(0,0,512,108);
+  sx.font='900 76px sans-serif'; sx.textAlign='center'; sx.fillStyle='#ff2e88'; sx.shadowColor='#ff2e88'; sx.shadowBlur=24; sx.fillText('RECORDS',256,82);
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(2.6,0.55),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sc)}));
+  sign.position.set(0,3.2,-4.42); shopScene.add(sign);
+  const tube=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.05,0.05),new THREE.MeshBasicMaterial({color:0xff2e88})); tube.position.set(0,2.6,-4.4); shopScene.add(tube);
+  const tube2=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.04,0.04),new THREE.MeshBasicMaterial({color:0x5fe8ff})); tube2.position.set(0,2.3,-4.4); shopScene.add(tube2);
+  const shelfM=new THREE.MeshStandardMaterial({color:0x3a2210,roughness:0.85});
+  const shelfE=new THREE.MeshStandardMaterial({color:0x5a3016,roughness:0.6});
+  for(let row=0;row<3;row++) for(let col=0;col<3;col++){
+    const x=-3.2+col*2.4, y=1.0+row*0.95;
+    const sh=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.06,0.55),shelfM); sh.position.set(x,y,-3.5); shopScene.add(sh);
+    const ed=new THREE.Mesh(new THREE.BoxGeometry(2.24,0.03,0.58),shelfE); ed.position.set(x,y+0.03,-3.5); shopScene.add(ed);
+    for(let k=0;k<10;k++){
+      const t=TRACKS[(row*10+col*7+k*3)%TRACKS.length];
+      const d=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.5,0.5),new THREE.MeshStandardMaterial({color:new THREE.Color(t.colors[0]),roughness:0.7}));
+      d.position.set(x-0.95+k*0.21,y+0.28,-3.5); shopScene.add(d);
+    }
+  }
+  const counterM=new THREE.MeshStandardMaterial({color:0x2a1408,roughness:0.75});
+  const topM=new THREE.MeshStandardMaterial({color:0x8a5838,roughness:0.4,metalness:0.15});
+  const counter=new THREE.Mesh(new THREE.BoxGeometry(4.6,0.95,0.85),counterM); counter.position.set(0.2,0.475,0.8); shopScene.add(counter);
+  const counterTop=new THREE.Mesh(new THREE.BoxGeometry(4.8,0.08,1.0),topM); counterTop.position.set(0.2,0.99,0.8); shopScene.add(counterTop);
+  const ttBase=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.11,0.9),new THREE.MeshStandardMaterial({color:0x1a0a1a,roughness:0.4,metalness:0.55})); ttBase.position.set(1.7,1.08,0.8); shopScene.add(ttBase);
+  const plate=new THREE.Mesh(new THREE.CylinderGeometry(0.36,0.36,0.06,40),new THREE.MeshStandardMaterial({color:0x0a0a0f,roughness:0.25,metalness:0.85})); plate.position.set(1.6,1.17,0.8); shopScene.add(plate); shopScene.userData.plate=plate;
+  const arm=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.42),new THREE.MeshStandardMaterial({color:0xcccccc,roughness:0.3,metalness:0.9})); arm.position.set(1.9,1.21,0.9); arm.rotation.y=-0.5; shopScene.add(arm);
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.5,8),new THREE.MeshStandardMaterial({color:0x111111})); pole.position.set(-1.5,1.25,0.9); shopScene.add(pole);
+  const shade=new THREE.Mesh(new THREE.ConeGeometry(0.18,0.22,16,1,true),new THREE.MeshStandardMaterial({color:0xffd166,emissive:0xffd166,emissiveIntensity:0.6,side:THREE.DoubleSide})); shade.position.set(-1.5,1.6,0.9); shopScene.add(shade);
+  L(-1.5,1.5,0.9,0xffd9a0,0.8,4);
+  const df1=new THREE.Mesh(new THREE.BoxGeometry(0.1,2.6,0.1),new THREE.MeshBasicMaterial({color:0xffd166})); df1.position.set(4.2,1.3,1.6); shopScene.add(df1);
+  const df2=df1.clone(); df2.position.set(4.2,1.3,0.4); shopScene.add(df2);
+  const df3=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,1.3),new THREE.MeshBasicMaterial({color:0xffd166})); df3.position.set(4.2,2.6,1.0); shopScene.add(df3);
+  for(let i=0;i<3;i++){
+    const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.09,12,10),new THREE.MeshBasicMaterial({color:0xffd9a0})); bulb.position.set(-2+i*2,3.7,-0.5); shopScene.add(bulb);
+    const hang=new THREE.Mesh(new THREE.CylinderGeometry(0.005,0.005,0.5,4),new THREE.MeshBasicMaterial({color:0x333333})); hang.position.set(-2+i*2,4.0,-0.5); shopScene.add(hang);
+  }
+  const sofaB=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.4,0.7),new THREE.MeshStandardMaterial({color:0x5a1030,roughness:0.85})); sofaB.position.set(-3.0,0.2,-0.2); shopScene.add(sofaB);
+  const sofaBk=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.5,0.15),new THREE.MeshStandardMaterial({color:0x5a1030,roughness:0.85})); sofaBk.position.set(-3.0,0.65,-0.5); shopScene.add(sofaBk);
+  const sofaS=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.12,0.55),new THREE.MeshStandardMaterial({color:0x7a1840,roughness:0.9})); sofaS.position.set(-3.0,0.44,-0.2); shopScene.add(sofaS);
+  for(let i=0;i<3;i++){
+    const pc=document.createElement('canvas'); pc.width=200; pc.height=280; const px=pc.getContext('2d');
+    const t=TRACKS[i*13%TRACKS.length];
+    px.fillStyle=t.colors[1]; px.fillRect(0,0,200,280);
+    px.fillStyle=t.colors[0]; px.beginPath(); px.arc(100,100,60,0,Math.PI*2); px.fill();
+    px.fillStyle='#f2ede4'; px.font='900 22px sans-serif'; px.fillText(t.name.slice(0,4),20,230);
+    px.font='14px sans-serif'; px.fillStyle='rgba(200,190,230,.85)'; px.fillText(t.genre,20,255);
+    const poster=new THREE.Mesh(new THREE.PlaneGeometry(0.7,1.0),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(pc)}));
+    poster.position.set(-4.42,2.2,-1.5+i*1.2); poster.rotation.y=Math.PI/2; shopScene.add(poster);
+  }
+}
+
+/* -------- 客人模型 v0.5 -------- */
+let guestGroup=null;
+function makeGuest(story){
+  const g=new THREE.Group();
+  const hue=(hashStr(story.id)%360)/360;
+  const skinC=new THREE.Color().setHSL(0.08,0.45,0.68);
+  const clothC=new THREE.Color().setHSL(hue,0.55,0.5);
+  const hairC=new THREE.Color().setHSL((hue+0.5)%1,0.6,0.28);
+  const skinM=new THREE.MeshStandardMaterial({color:skinC,roughness:0.85,flatShading:true});
+  const clothM=new THREE.MeshStandardMaterial({color:clothC,roughness:0.8,flatShading:true});
+  const darkM=new THREE.MeshStandardMaterial({color:0x1a1026,roughness:0.9,flatShading:true});
+  const hairM=new THREE.MeshStandardMaterial({color:hairC,roughness:0.85,flatShading:true});
+  const head=new THREE.Mesh(new THREE.IcosahedronGeometry(0.19,0),skinM); head.position.y=1.55; g.add(head);
+  const hairTop=new THREE.Mesh(new THREE.SphereGeometry(0.2,8,6,0,Math.PI*2,0,Math.PI/2),hairM); hairTop.position.y=1.55; g.add(hairTop);
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.26,0.75,6),clothM); body.position.y=1.05; g.add(body);
+  const collar=new THREE.Mesh(new THREE.TorusGeometry(0.16,0.03,4,6),new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.9,flatShading:true})); collar.rotation.x=Math.PI/2; collar.position.y=1.38; g.add(collar);
+  const legGeo=new THREE.BoxGeometry(0.09,0.65,0.1);
+  const legL=new THREE.Mesh(legGeo,darkM); legL.position.set(-0.11,0.33,0); g.add(legL);
+  const legR=new THREE.Mesh(legGeo,darkM); legR.position.set(0.11,0.33,0); g.add(legR);
+  const shoeGeo=new THREE.BoxGeometry(0.11,0.06,0.16);
+  const shoeL=new THREE.Mesh(shoeGeo,darkM); shoeL.position.set(-0.11,0.03,0.03); g.add(shoeL);
+  const shoeR=new THREE.Mesh(shoeGeo,darkM); shoeR.position.set(0.11,0.03,0.03); g.add(shoeR);
+  const armGeo=new THREE.BoxGeometry(0.07,0.55,0.09);
+  const armL=new THREE.Mesh(armGeo,clothM); armL.position.set(-0.27,1.05,0); armL.rotation.z=0.12; g.add(armL);
+  const armR=new THREE.Mesh(armGeo,clothM); armR.position.set(0.27,1.05,0); armR.rotation.z=-0.12; g.add(armR);
+  const handGeo=new THREE.SphereGeometry(0.06,6,5);
+  const handL=new THREE.Mesh(handGeo,skinM); handL.position.set(-0.29,0.78,0); g.add(handL);
+  const handR=new THREE.Mesh(handGeo,skinM); handR.position.set(0.29,0.78,0); g.add(handR);
+  const eyeGeo=new THREE.SphereGeometry(0.02,6,6); const eyeM=new THREE.MeshBasicMaterial({color:0x0a0612});
+  const eyeL=new THREE.Mesh(eyeGeo,eyeM); eyeL.position.set(-0.06,1.56,0.19); g.add(eyeL);
+  const eyeR=new THREE.Mesh(eyeGeo,eyeM); eyeR.position.set(0.06,1.56,0.19); g.add(eyeR);
+  if(story.id==='coder'||story.id==='ai'){
+    const gl=new THREE.Mesh(new THREE.TorusGeometry(0.04,0.008,6,12),new THREE.MeshBasicMaterial({color:0x0a0612})); gl.position.set(-0.06,1.56,0.21); g.add(gl);
+    const gr=gl.clone(); gr.position.x=0.06; g.add(gr);
+    const gb=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.008,0.008),new THREE.MeshBasicMaterial({color:0x0a0612})); gb.position.set(0,1.56,0.21); g.add(gb);
+  }
+  if(story.id==='catlady'||story.id==='postman'){
+    const bag=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.28,0.14),new THREE.MeshStandardMaterial({color:0x8a5030,roughness:0.8,flatShading:true})); bag.position.set(0.28,1.05,-0.05); g.add(bag);
+    const strap=new THREE.Mesh(new THREE.TorusGeometry(0.13,0.015,4,12,Math.PI),new THREE.MeshStandardMaterial({color:0x8a5030,roughness:0.8})); strap.rotation.x=Math.PI/2; strap.rotation.z=Math.PI/2; strap.position.set(0.06,1.28,0); g.add(strap);
+  }
+  if(story.id==='nurse'){
+    const hat=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.06,0.14),new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.9})); hat.position.set(0,1.78,0); g.add(hat);
+  }
+  if(story.id==='grandma'||story.id==='teacher'){
+    const cane=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,0.8,6),new THREE.MeshStandardMaterial({color:0x4a2410,roughness:0.7})); cane.position.set(-0.32,0.4,0.05); g.add(cane);
+    const ct=new THREE.Mesh(new THREE.TorusGeometry(0.05,0.012,4,10,Math.PI),new THREE.MeshStandardMaterial({color:0x4a2410,roughness:0.7})); ct.position.set(-0.32,0.8,0.05); ct.rotation.x=Math.PI/2; g.add(ct);
+  }
+  if(story.id==='boxer'){
+    const wL=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.08,6),new THREE.MeshStandardMaterial({color:0xdddddd,roughness:0.9})); wL.position.set(-0.29,0.7,0); g.add(wL);
+    const wR=wL.clone(); wR.position.x=0.29; g.add(wR);
+  }
+  if(story.id==='visitor'){
+    g.traverse(o=>{ if(o.material&&o.material.emissive){ o.material.emissive=new THREE.Color(0x5fe8ff); o.material.emissiveIntensity=0.35; }});
+  }
+  g.userData={legL,legR,armL,armR,body,head,handL,handR,shoeL,shoeR};
+  return g;
+}
+/* -------- 唱片观赏场景 -------- */
+let recordRoot = null, recordMesh = null, laserMat = null;
+let recState = {
+  rotY:0, rotX:0, targetY:0, targetX:0,
+  scale:1, spinning:true, lastInput:0,
+  dragging:false, lastX:0, lastY:0,
+  pointers:new Map(), pinchDist:0,
+  lastTapTime:0, lastTapX:0, lastTapY:0,
+  longPressTimer:null, moved:false
+};
+
+function buildRecordScene(){
+  recScene = new THREE.Scene();
+  recCam = new THREE.PerspectiveCamera(58, window.innerWidth/window.innerHeight, 0.1, 100);
+  recCam.position.set(0, 0, 4.6);
+  recScene.add(new THREE.AmbientLight(0xffffff, 0.95));
+  const p1 = new THREE.PointLight(0xff2e88, 2.2, 20); p1.position.set(-3, 3, 4); recScene.add(p1);
+  const p2 = new THREE.PointLight(0x5fe8ff, 2.0, 20); p2.position.set(3, -2, 4); recScene.add(p2);
+  const p3 = new THREE.PointLight(0xffffff, 1.1, 20); p3.position.set(0, 0, 6);  recScene.add(p3);
+
+  recordRoot = new THREE.Group();
+  recScene.add(recordRoot);
+}
+
+const LASER_VERT = `
+varying vec2 vUv;
+varying vec3 vWorldNormal;
+varying vec3 vWorldPos;
+varying vec3 vWorldTangent;
+void main(){
+  vUv = uv;
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vWorldPos = wp.xyz;
+  vWorldNormal = normalize(mat3(modelMatrix) * normal);
+  vec4 centerW = modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  vec3 radialDir = wp.xyz - centerW.xyz;
+  float rl = length(radialDir);
+  vec3 td = vec3(1.0, 0.0, 0.0);
+  if(rl > 0.0001){
+    radialDir = radialDir / rl;
+    td = normalize(cross(vWorldNormal, radialDir));
+  }
+  vWorldTangent = td;
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}
+`;
+const LASER_FRAG = `
+uniform float uTime;
+uniform vec3 uColorA;
+uniform vec3 uColorB;
+uniform vec3 uLightPos;
+varying vec2 vUv;
+varying vec3 vWorldNormal;
+varying vec3 vWorldPos;
+varying vec3 vWorldTangent;
+
+void main(){
+  vec2 p = vUv - 0.5;
+  float r = length(p) * 2.0;
+  float ang = atan(p.y, p.x);
+
+  vec3 N = normalize(vWorldNormal);
+  vec3 V = normalize(cameraPosition - vWorldPos);
+
+  /* 白色高光：一条过圆心的直线
+     光源在 UV 空间的投影方向 → 垂直于该方向的直线最亮 */
+  vec2 Luv = normalize(uLightPos.xy + vec2(0.0001, 0.0001));
+  vec2 perp = vec2(-Luv.y, Luv.x);
+  float lineCoord = dot(p, perp);
+  float anis = exp(-lineCoord * lineCoord * 180.0);
+
+  /* 银灰底 */
+  vec3 silver = vec3(0.86, 0.88, 0.94);
+  float fresArg = max(1.0 - abs(dot(N, V)), 0.0);
+  float fres = pow(fresArg, 1.5);
+  vec3 baseCol = silver * (0.42 + 0.55 * fres);
+
+  /* 8 条辐射彩虹扇形 */
+  float hue = ang / 6.28318 * 8.0 + uTime * 0.03;
+  vec3 rainbow = 0.5 + 0.5 * cos(6.28318 * (hue + vec3(0.0, 0.33, 0.67)));
+  float rainbowIntensity = 0.15 + 0.45 * fresArg;
+
+  vec3 col = baseCol;
+  col += rainbow * rainbowIntensity * 0.9;
+  col += vec3(1.0) * anis * 0.85;
+
+  /* 同心细纹 */
+  col *= 0.96 + 0.04 * sin(r * 200.0);
+
+  /* 中心孔 + 外缘压暗 */
+  col *= smoothstep(0.10, 0.20, r);
+  col *= smoothstep(1.03, 0.92, r);
+
+  gl_FragColor = vec4(col, 1.0);
+}
+`;function buildRecord(track){
+  // 清空
+  while(recordRoot.children.length) {
+    const c = recordRoot.children.pop();
+    c.traverse(o => {
+      if(o.geometry) o.geometry.dispose();
+      if(o.material){
+        const ms = Array.isArray(o.material) ? o.material : [o.material];
+        ms.forEach(m=>{ if(m.map) m.map.dispose(); m.dispose(); });
+      }
+    });
+  }
+
+  const geo = new THREE.CylinderGeometry(1, 1, 0.024, 72, 1, false);
+  geo.rotateX(Math.PI/2);
+
+  const coverTex = new THREE.CanvasTexture(getCoverCanvas(track, 512));
+  coverTex.anisotropy = 4;
+
+  const coverMat = new THREE.MeshStandardMaterial({ map:coverTex, roughness:0.55, metalness:0.08 });
+  const sideMat  = new THREE.MeshStandardMaterial({ color:0x241a34, roughness:0.35, metalness:0.85 });
+
+  laserMat = new THREE.ShaderMaterial({
+    uniforms:{ uTime:{ value:0 }, uColorA:{ value:new THREE.Color(track.colors[0]) }, uColorB:{ value:new THREE.Color(track.colors[1]) }, uLightPos:{ value:new THREE.Vector3(2, 3, 4) } },
+    vertexShader: LASER_VERT,
+    fragmentShader: LASER_FRAG
+  });
+
+  recordMesh = new THREE.Mesh(geo, [sideMat, coverMat, laserMat]);
+  recordRoot.add(recordMesh);
+
+  // 中心孔
+  const holeMat = new THREE.MeshBasicMaterial({ color:0x000000 });
+  const hole1 = new THREE.Mesh(new THREE.CircleGeometry(0.10, 32), holeMat);
+  hole1.position.z = 0.0126; recordMesh.add(hole1);
+  const hole2 = new THREE.Mesh(new THREE.CircleGeometry(0.10, 32), holeMat);
+  hole2.position.z = -0.0126; hole2.rotation.y = Math.PI; recordMesh.add(hole2);
+
+  const ringMat = new THREE.MeshBasicMaterial({ color:0xd8d0e8 });
+  const ring1 = new THREE.Mesh(new THREE.RingGeometry(0.10, 0.14, 32), ringMat);
+  ring1.position.z = 0.0127; recordMesh.add(ring1);
+  const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.10, 0.14, 32), ringMat);
+  ring2.position.z = -0.0127; ring2.rotation.y = Math.PI; recordMesh.add(ring2);
+
+  // 珍稀唱片光晕
+  if(track.rarity >= 3){
+    const halo = new THREE.Mesh(
+      new THREE.RingGeometry(1.02, 1.12, 64),
+      new THREE.MeshBasicMaterial({ color:0xffd166, transparent:true, opacity:0.5, side:THREE.DoubleSide })
+    );
+    recordRoot.add(halo);
+  } else if(track.rarity === 2){
+    const halo = new THREE.Mesh(
+      new THREE.RingGeometry(1.01, 1.05, 64),
+      new THREE.MeshBasicMaterial({ color:0xffd166, transparent:true, opacity:0.55, side:THREE.DoubleSide })
+    );
+    recordRoot.add(halo);
+  }
+
+  recState.rotY = 0; recState.rotX = 0;
+  recState.targetY = 0; recState.targetX = 0;
+  recState.scale = 1;
+  recState.spinning = true;
+  recState.lastInput = performance.now();
+  recordRoot.rotation.set(0,0,0);
+  recordRoot.scale.setScalar(1);
+  recordMesh.rotation.z = 0;
+}
+
+/* -------- 主循环 -------- */
+function loop(){
+  requestAnimationFrame(loop);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const now = performance.now();
+
+  if(VIEW.mode === 'record'){
+    // 缓动
+    recState.rotY += (recState.targetY - recState.rotY) * Math.min(1, dt*9);
+    recState.rotX += (recState.targetX - recState.rotX) * Math.min(1, dt*9);
+    recordRoot.rotation.y = recState.rotY;
+    recordRoot.rotation.x = recState.rotX;
+    recordRoot.scale.setScalar(recordRoot.scale.x + (recState.scale - recordRoot.scale.x) * Math.min(1, dt*10));
+
+    if(recState.spinning && !recState.dragging && now - recState.lastInput > 1000){
+      recordMesh.rotation.z += dt * 0.55;
+    }
+    if(laserMat) laserMat.uniforms.uTime.value = now / 1000;
+
+    renderer.render(recScene, recCam);
+  } else {
+    // 店铺场景
+    if(shopScene.userData.plate) shopScene.userData.plate.rotation.y += dt * 0.4;
+    if(guestGroup){
+      // 待机呼吸
+      guestGroup.position.y = Math.sin(now/700) * 0.015;
+    }
+    renderer.render(shopScene, shopCam);
+  }
+}
+
+/* ------------------------- 5. 唱片观赏交互 ------------------------- */
+const RecView = {
+  resolve:null,
+  track:null,
+  /* v26：进入观赏界面前，暂停按钮原本是否显示。
+     为什么需要记忆：观赏唱片有两条入口——
+       · 局内给客人选唱片：进之前 pauseBtn 是 on 的，关闭后要还回来
+       · 主菜单收藏页点开唱片：进之前 pauseBtn 是 off 的，关闭后必须保持 off
+     原先 close() 里无条件 add('on')，于是从主菜单看完唱片回到收藏页时，
+     暂停按钮被误置为显示状态（虽然它 z-index 低于 .screen 通常看不出来，
+     但状态已错，属于残留 bug）。改成"还原进门前状态"后就两边都对了。 */
+  _pauseBtnBefore: false,
+
+  open(track){
+    return new Promise(resolve => {
+      this.resolve = resolve;
+      this.track = track;
+      this._pauseBtnBefore = $('pauseBtn').classList.contains('on');
+      buildRecord(track);
+      $('recName').textContent = track.name;
+      $('recTags').textContent =
+        track.genre + ' · ' + track.moods.join(' / ') + '  ·  ' + track.bpm + ' BPM' +
+        '  ' + '★'.repeat(track.rarity);
+      VIEW.mode = 'record';
+      showScreen('scr-rec');
+      $('pauseBtn').classList.remove('on');
+    });
+  },
+
+  close(action){
+    showScreen(null);
+    VIEW.mode = 'shop';
+    /* v26：还原进门前状态，而不是无脑显示（见上方 _pauseBtnBefore 说明） */
+    $('pauseBtn').classList.toggle('on', !!this._pauseBtnBefore);
+    const r = this.resolve;
+    this.resolve = null;
+    if(r) r(action);
+  },
+
+  /* v26：「返回主菜单」时调用。
+     若不主动 resolve，open() 返回的 Promise 会永远挂起，
+     留下一条永不结束的 serveOneGuest 协程（虽不致命，但属状态泄漏）。
+     解成 'abort' 后，serveOneGuest 紧随其后的 if(Game.abort) return 会干净退栈。 */
+  cancel(){
+    const r = this.resolve;
+    this.resolve = null;
+    if(r) r('abort');
+  }
+};
+
+(function bindRecGestures(){
+  const el = $('scr-rec');
+  const S = recState;
+
+  function ptDist(){
+    const arr = [...S.pointers.values()];
+    if(arr.length < 2) return 0;
+    const dx = arr[0].x - arr[1].x, dy = arr[0].y - arr[1].y;
+    return Math.hypot(dx, dy);
+  }
+
+  el.addEventListener('pointerdown', e => {
+    if(e.target.closest('button')) return;
+    el.setPointerCapture(e.pointerId);
+    S.pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    S.moved = false;
+
+    if(S.pointers.size === 1){
+      S.dragging = true;
+      S.lastX = e.clientX; S.lastY = e.clientY;
+      S.lastInput = performance.now();
+
+      // 长按
+      S.longPressTimer = setTimeout(() => {
+        if(!S.moved){
+          toast(RecView.track ? (RecView.track.genre + ' · ' + RecView.track.moods.join('/') + ' · ★'.repeat(RecView.track.rarity)) : '');
+          S.longPressTimer = null;
+        }
+      }, 500);
+
+      // 双击检测
+      const now = performance.now();
+      if(now - S.lastTapTime < 300 && Math.hypot(e.clientX - S.lastTapX, e.clientY - S.lastTapY) < 30){
+        flipRecord();
+        S.lastTapTime = 0;
+      } else {
+        S.lastTapTime = now; S.lastTapX = e.clientX; S.lastTapY = e.clientY;
+      }
+    } else if(S.pointers.size === 2){
+      S.pinchDist = ptDist();
+      S.dragging = false;
+      if(S.longPressTimer){ clearTimeout(S.longPressTimer); S.longPressTimer = null; }
+    }
+  });
+
+  el.addEventListener('pointermove', e => {
+    if(!S.pointers.has(e.pointerId)) return;
+    const p = S.pointers.get(e.pointerId);
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    if(Math.hypot(dx,dy) > 3) S.moved = true;
+
+    if(S.pointers.size === 1 && S.dragging){
+      S.targetY += dx * 0.011;
+      S.targetX = clamp(S.targetX + dy * 0.008, -0.9, 0.9);
+      S.lastInput = performance.now();
+      if(S.longPressTimer && S.moved){ clearTimeout(S.longPressTimer); S.longPressTimer = null; }
+    } else if(S.pointers.size === 2){
+      const d = ptDist();
+      if(S.pinchDist > 0){
+        S.scale = clamp(S.scale * (d / S.pinchDist), 0.7, 1.7);
+      }
+      S.pinchDist = d;
+      S.lastInput = performance.now();
+    }
+  });
+
+  function up(e){
+    S.pointers.delete(e.pointerId);
+    if(S.pointers.size === 0) S.dragging = false;
+    if(S.pointers.size < 2) S.pinchDist = 0;
+    if(S.longPressTimer){ clearTimeout(S.longPressTimer); S.longPressTimer = null; }
+    S.lastInput = performance.now();
+  }
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+  el.addEventListener('pointerleave', up);
+
+  function flipRecord(){
+    const cur = S.targetY;
+    const turns = Math.round((cur + Math.PI) / Math.PI);
+    S.targetY = turns * Math.PI;
+    S.lastInput = performance.now();
+  }
+  window.__flipRecord = flipRecord;
+})();
+
+/* ------------------------- 6. 界面管理 ------------------------- */
+const SCREENS = ['scr-boot','scr-start','scr-pause','scr-inv','scr-rec','scr-player','scr-collection','scr-ach','scr-settings','scr-report','scr-shop'];
+
+/* v21：属于"菜单/非局内"的界面。进入这些界面必须撤掉对话框。 */
+const MENU_SCREENS = ['scr-boot','scr-start','scr-collection','scr-ach','scr-settings'];
+
+/* v21：真正"离开局内会话"的界面。
+   只有进入这些界面才做硬重置（清掉挂起的 Dialogue.play 状态）。
+   注意不能把 scr-collection / scr-settings 也算进来——
+   它们在暂停菜单里也能进，硬重置会让对话协程永久挂起、返回局内后卡死。 */
+const LEAVE_GAME_SCREENS = ['scr-boot','scr-start'];
+
+/* v21：撤掉对话框。
+   permanent=true 时连 Dialogue 的挂起状态一起清掉，
+   避免回到主菜单后又被 _pauseCtrl.resume() 还原出来。 */
+function hideDialogue(permanent){
+  const d = $('dlg');
+  if(!d) return;
+  d.classList.remove('on');
+  if(!permanent) return;
+  d.dataset.wasOn = '';
+  try{
+    if(typeof Dialogue !== 'undefined' && Dialogue){
+      /* v21：作废所有"因暂停而被推迟、尚未执行"的 play()。
+         没有这一步，解除暂停时 _do 会在主菜单上把气泡重新挂出来。 */
+      Dialogue._epoch = (Dialogue._epoch || 0) + 1;
+      if(Dialogue.timer){ clearInterval(Dialogue.timer); Dialogue.timer = null; }
+      Dialogue.typing = false;
+      Dialogue._timerPaused = false;
+      Dialogue.lines = [];
+      Dialogue.idx = 0;
+      /* 关键：把挂起的 play() 唤醒而不是丢弃。
+         丢弃会让 serveOneGuest 里的 await 永远不返回，
+         留下一条永不结束的协程；唤醒后它会顺着 Game.abort 立刻 return，
+         整条 runOneDay 调用栈干净退出（并把已成交的客人结算掉）。 */
+      const r = Dialogue.resolve;
+      Dialogue.resolve = null;
+      if(r){ try{ r(); }catch(e){} }
+    }
+  }catch(e){}
+}
+
+/* v21：切屏时切换 8bit BGM。
+   v26 重写：不再"一屏一映射"，因为那样必然出错（见下方 BGM_CTX 说明）。
+
+   ── 模型：3 个"音乐面" + 任意多个"子屏" ──
+   游戏里有三个互不相同的音乐面（正是需求要的三首 BGM）：
+     主界面 / 暂停菜单 / 局内
+   其余界面（收藏、成就、设置、观赏唱片、进货、日结、店铺管理…）
+   都不是音乐面，而是**从某个音乐面打开的子屏**——
+   它们一律继承"打开它时所处的音乐面"。
+
+   于是「局内 → 暂停 → 收藏」听的是暂停曲（人还在暂停里），
+        「主菜单 → 收藏」听的是主菜单曲，
+        「局内 → 选唱片」听的是局内曲。
+   子屏与音乐面是多对多的（收藏从主菜单和暂停菜单都能进），
+   这正是"按屏名写死一首"必然出错的原因。 */
+const BGM_FIXED_MAP = {
+  'scr-boot':   'menu',   /* 启动页归在主界面音乐面 */
+  'scr-start':  'menu',
+  'scr-pause':  'pause',
+  'scr-player': 'none'    /* 试听/播放唱片时让位给唱片本身 */
+};
+
+/* v26：BGM 音乐面（会话语境）。
+   ── 为什么必须显式维护，而不能靠屏名反推 ──
+   scr-rec（观赏唱片）、null（无屏 = 店铺视角）这两个"屏名"
+   在**不同音乐面**下都会出现：
+     · 主菜单收藏页点开一张唱片 → scr-rec / null
+     · 局内接待客人时选唱片     → 同样是 scr-rec / null
+   光按屏名映射，必然有一边张冠李戴。
+   最典型的表现：在**主菜单**的收藏页点开一张唱片，
+   BGM 会错播成**局内曲**。
+
+   一开始试过"进 scr-collection 就置 menu、进 scr-pause 就置 game"，
+   但那条路同样是错的：scr-collection / scr-ach / scr-settings
+   这仨**从主菜单和暂停菜单都能进**，也都能原路返回。
+   「局内 → 暂停 → 收藏 → 返回 → 继续营业」这条路径上，
+   中途任何一次误置 menu，都会让返回局内后错播主菜单曲。
+
+   所以定下一条硬规则：
+     BGM_CTX 只在**音乐面边界**变化，子屏进出不改变它。
+   音乐面边界：
+     · 落回主界面两屏      → 自动归位 'menu'
+     · 进入暂停菜单        → 自动置 'pause'
+     · 从主菜单进局内      → 显式 setBgmCtx('game')
+       （唯一无法从屏名推断的一处：scr-start → null 与
+         scr-pause → null 目标屏名相同，但含义不同） */
+let BGM_CTX = 'menu';   /* 'menu' | 'pause' | 'game' */
+function setBgmCtx(ctx){
+  BGM_CTX = (ctx === 'game' || ctx === 'pause') ? ctx : 'menu';
+}
+function getBgmCtx(){ return BGM_CTX; }
+
+function applyBgmForScreen(id){
+  try{
+    if(typeof Bgm === 'undefined' || !Bgm) return;
+
+    /* 1) 音乐面自动归位：屏名本身足以判定"人在哪个面"时，就地更新语境。
+          这样"回到主菜单"无需任何调用点记得手动重置。 */
+    if(id === 'scr-boot' || id === 'scr-start') BGM_CTX = 'menu';
+    else if(id === 'scr-pause') BGM_CTX = 'pause';
+
+    /* 2) 再决定放哪首：固定面放固定曲，子屏继承当前音乐面 */
+    let key;
+    if(Object.prototype.hasOwnProperty.call(BGM_FIXED_MAP, id)){
+      key = BGM_FIXED_MAP[id];
+    } else {
+      key = BGM_CTX;          /* 'menu' | 'pause' | 'game' 恰好就是三个曲目 key */
+    }
+    Bgm.set(key);
+  }catch(e){}
+}
+/* v26：暴露给外部自检用（脚本作用域的 const/let 不在 window 上） */
+window.setBgmCtx         = setBgmCtx;
+window.getBgmCtx         = getBgmCtx;
+window.applyBgmForScreen = applyBgmForScreen;
+
+function showScreen(id){
+  SCREENS.forEach(s => $(s).classList.toggle('on', s === id));
+  /* v21：离开局内时撤掉对话框。
+     - 回到主菜单/启动页：硬重置（同时清 dataset.wasOn，防 _pauseCtrl.resume() 复活气泡）
+     - 收藏/成就/设置：只隐藏。这些界面在暂停菜单里也能进，
+       此时对话被打断但尚未结束，硬重置会让对话协程永远等不到 resolve。 */
+  if(LEAVE_GAME_SCREENS.indexOf(id) >= 0) hideDialogue(true);
+  else if(MENU_SCREENS.indexOf(id) >= 0) hideDialogue(false);
+  applyBgmForScreen(id);
+}
+/* v26：当前正在显示的是哪个界面；都没开则返回 null（= 店铺视角） */
+function currentOnScreen(){
+  for(let i = 0; i < SCREENS.length; i++){
+    const el = $(SCREENS[i]);
+    if(el && el.classList.contains('on')) return SCREENS[i];
+  }
+  return null;
+}
+
+/* v26：暂停前的"现场"，用于「继续营业」时原样还原。
+   ── 为什么必须有它（这是一处真实软锁的根因）──
+   之前 resume 一律 showScreen(null)，等于把暂停前打开的界面全抹掉。
+   而局内给客人选唱片的流程是这样的：
+     openInventoryForGuest()  → 玩家点卡片
+     RecView.open(track)      → 显示 scr-rec，并返回一个 Promise
+     玩家在唱片界面点 ☰ 暂停    → scr-pause
+     「继续营业」              → showScreen(null) ← scr-rec 被抹掉
+   于是 RecView.open() 的 resolve 永远等不到 RecView.close()，
+   serveOneGuest 卡在 await 上：客人永远无法成交、剧情永远不推进。
+   表现就是"暂停回来画面回到店铺视角、客人交付不了、游戏卡死"。
+   修法：暂停时记住现场，继续营业时还原它。 */
+let _prePauseScreen = null;   /* null = 店铺视角；'scr-rec' = 唱片界面 */
+let _prePauseCtx    = 'game'; /* 暂停时所处的音乐面，决定还原后放哪首曲 */
+
+function beginPause(screenId){
+  _prePauseScreen = (screenId === undefined) ? currentOnScreen() : screenId;
+  _prePauseCtx    = getBgmCtx();
+}
+function takePauseRestore(){
+  const back = _prePauseScreen;
+  const inGame = (_prePauseCtx === 'game');
+  _prePauseScreen = null;
+  _prePauseCtx = 'game';
+  return { screen: back, inGame: inGame };
+}
+function toast(msg, ms){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>t.classList.remove('on'), ms || 1800);
+}
+
+function modal(html, opts){
+  opts = opts || {};
+  return new Promise(resolve => {
+    var _do = function(){ if(!opts.bypassPause && window._pauseCtrl && window._pauseCtrl.paused && window._pauseCtrl.promise){ window._pauseCtrl.promise.then(_do); return; }
+    const box = $('modalBox');
+    box.innerHTML = html;
+    $('modal').classList.add('on');
+    box.querySelectorAll('button[data-val]').forEach(b=>{
+      b.onclick = () => {
+        $('modal').classList.remove('on');
+        resolve(b.dataset.val);
+      };
+    });
+    };
+    _do();
+  });
+}
+
+/* ------------------------- 7. 游戏状态 ------------------------- */
+const Game = {
+  day: 1, coins: 0, inventory: [],
+  shopLevel: 1, recordPlayerLevel: 1,
+  decor: { poster:1, rug:1, neon:1, sign:1, sofa:1 },
+  adBoost: 0,
+  repGood: 0, repBad: 0,
+  stats: {
+    income:0, expense:0, served:0, sold:0, good:0, ok:0, bad:0,
+    history: []
+  },
+  collection: [],
+  achievements: [],
+  guestsToday: 0,
+  daySoldList: [],
+  dayIncome: 0, dayExpense: 0,
+  usedStories: [],
+  running: false,
+  abort: false,
+  /* v21：日循环世代令牌，防止旧循环未退栈时重入 */
+  _gen: 0,
+  /* v20 当天进行中状态 */
+  _dayInProgress: false,
+  dayStories: [],
+  dayCollected: [],
+  _dayMoods: null,
+  _dayGood: 0
+};
+
+function totalDecor(){
+  return Object.values(Game.decor).reduce((a,b)=>a+b, 0);
+}
+function decorMult(){
+  return 1 + (totalDecor() - 5) * 0.025;
+}
+
+function shopMult(){
+  return 1 + (Game.shopLevel - 1) * 0.10;
+}function rarityMult(r){ return r===3 ? 1.8 : (r===2 ? 1.3 : 1); }
+
+/* ------------------------- 8. 存档 ------------------------- */
+const SAVE_KEY = 'record_shop_save_v04';
+
+function save(){
+  try{
+    const data = {
+      day: Game.day, coins: Game.coins, inventory: Game.inventory,
+      shopLevel: Game.shopLevel, recordPlayerLevel: Game.recordPlayerLevel,
+      decor: Game.decor, repGood: Game.repGood, repBad: Game.repBad,
+      stats: Game.stats, collection: Game.collection, achievements: Game.achievements,
+      adBoost: Game.adBoost,
+      /* v20：持久化"当天进行中"的进度，避免返回主菜单后回退到当天早上抽卡 */
+      _dayInProgress: !!Game._dayInProgress,
+      guestsToday: Game.guestsToday || 0,
+      dayStories: Game.dayStories || [],
+      daySoldList: Game.daySoldList || [],
+      dayIncome: Game.dayIncome || 0,
+      dayExpense: Game.dayExpense || 0,
+      dayCollected: Game.dayCollected || [],
+      _dayMoods: (Game._dayMoods && Game._dayMoods.size) ? Array.from(Game._dayMoods) : [],
+      _dayGood: Game._dayGood || 0,
+      /* v20：成就依赖的跨天字段之前没存，导致读档后部分成就判定丢失 */
+      seenStories: Game.seenStories || [],
+      goodStories: Game.goodStories || [],
+      usedStories: Game.usedStories || [],
+      _rareSold: Game._rareSold || 0,
+      _bigSale: !!Game._bigSale,
+      _perfectDay: !!Game._perfectDay,
+      _usedAd: !!Game._usedAd,
+      /* v21：正在服务第几位客人 / 该客人是否已成交（防止中途退出后重复计价） */
+      _curGuest: (typeof Game._curGuest === 'number' ? Game._curGuest : -1),
+      _curGuestDone: !!Game._curGuestDone
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    refreshSaveInfo();
+  }catch(e){}
+}
+function load(){
+  try{
+    const s = localStorage.getItem(SAVE_KEY);
+    if(!s) return false;
+    const d = JSON.parse(s);
+    Object.assign(Game, {
+      day: d.day ?? 1, coins: d.coins ?? 0, inventory: d.inventory ?? [],
+      shopLevel: d.shopLevel ?? 1, recordPlayerLevel: d.recordPlayerLevel ?? 1,
+      decor: d.decor ?? Game.decor, repGood: d.repGood ?? 0, repBad: d.repBad ?? 0,
+      stats: d.stats ?? Game.stats, collection: d.collection ?? [],
+      achievements: d.achievements ?? [], adBoost: d.adBoost ?? 0,
+      /* v20 当天进度 */
+      _dayInProgress: !!d._dayInProgress,
+      guestsToday: d.guestsToday || 0,
+      dayStories: d.dayStories || [],
+      daySoldList: d.daySoldList || [],
+      dayIncome: d.dayIncome || 0,
+      dayExpense: d.dayExpense || 0,
+      dayCollected: d.dayCollected || [],
+      _dayMoods: new Set(d._dayMoods || []),
+      _dayGood: d._dayGood || 0,
+      seenStories: d.seenStories || [],
+      goodStories: d.goodStories || [],
+      usedStories: d.usedStories || [],
+      _rareSold: d._rareSold || 0,
+      _bigSale: !!d._bigSale,
+      _perfectDay: !!d._perfectDay,
+      _usedAd: !!d._usedAd,
+      /* v21：局内进度原子性 */
+      _curGuest: (typeof d._curGuest === 'number' ? d._curGuest : -1),
+      _curGuestDone: !!d._curGuestDone
+    });
+    /* v21：读档时若发现"正在服务中且已成交"的残留标记（异常退出），
+       把它结算掉，避免这位客人被重复接待。 */
+    if(Game._curGuestDone && Game._curGuest >= 0 && Game._curGuest >= Game.guestsToday){
+      Game.guestsToday = Math.min(5, Game._curGuest + 1);
+    }
+    Game._curGuest = -1;
+    Game._curGuestDone = false;
+    return true;
+  }catch(e){ return false; }
+}
+/* v20：本次会话是否可续跑当天（已抽完卡、当天未结束、客人未服务满） */
+function canResumeDay(){
+  return !!Game._dayInProgress
+    && (Game.dayStories || []).length === 5
+    && (Game.guestsToday || 0) < 5;
+}
+function hasSave(){ return !!localStorage.getItem(SAVE_KEY); }
+function refreshSaveInfo(){
+  const txt = hasSave() ? ('保存于 第 ' + Game.day + ' 天') : '无存档';
+  const si = $('saveInfo'); if(si) si.textContent = txt;
+  const ss = $('setSave'); if(ss) ss.textContent = hasSave() ? ('第 ' + Game.day + ' 天') : '无存档';
+  const pl = $('playLabel');
+  if(pl) pl.textContent = hasSave() ? ('继续 第 ' + Game.day + ' 天') : '开始游戏';
+}
+function resetGame(){
+  Game.day = 1; Game.coins = 0; Game.inventory = [];
+  Game.shopLevel = 1; Game.recordPlayerLevel = 1;
+  Game.decor = { poster:1, rug:1, neon:1, sign:1, sofa:1 };
+  Game.adBoost = 0; Game.repGood = 0; Game.repBad = 0;
+  Game.stats = { income:0, expense:0, served:0, sold:0, good:0, ok:0, bad:0, history:[] };
+  Game.collection = []; Game.achievements = [];
+  /* v20 清空当天进度与成就依赖字段 */
+  Game._dayInProgress = false;
+  Game.guestsToday = 0; Game.daySoldList = []; Game.dayStories = [];
+  Game.dayIncome = 0; Game.dayExpense = 0; Game.dayCollected = [];
+  Game._dayMoods = new Set(); Game._dayGood = 0;
+  Game.seenStories = []; Game.goodStories = []; Game.usedStories = [];
+  Game._rareSold = 0; Game._bigSale = false; Game._perfectDay = false; Game._usedAd = false;
+  localStorage.removeItem(SAVE_KEY);
+  refreshSaveInfo();
+}
+
+/* ------------------------- 9. 成就 ------------------------- */
+const ACHIEVEMENTS = [
+  { id:'a01', name:'开门大吉',     desc:'完成第 1 天',              chk:g=> g.day > 1 },
+  { id:'a02', name:'第一桶金',     desc:'累计收入 ≥ 1000',          chk:g=> g.stats.income >= 1000 },
+  { id:'a03', name:'五星店主',     desc:'非常满意客人达到 20 位',    chk:g=> g.stats.good >= 20 },
+  { id:'a04', name:'收藏家',       desc:'收藏 20 张唱片',           chk:g=> g.collection.length >= 20 },
+  { id:'a05', name:'唱片鉴赏家',   desc:'收藏 50 张唱片',           chk:g=> g.collection.length >= 50 },
+  { id:'a06', name:'听遍百曲',     desc:'收藏 100 张唱片',          chk:g=> g.collection.length >= 100 },
+  { id:'a07', name:'雨夜之约',     desc:'触发「雨夜来客」故事',      chk:g=> g.seenStories && g.seenStories.includes('rainy') },
+  { id:'a08', name:'程序员的知音', desc:'让程序员非常满意',          chk:g=> g.goodStories && g.goodStories.includes('coder') },
+  { id:'a09', name:'温暖的失恋',   desc:'让失恋女孩非常满意',        chk:g=> g.goodStories && g.goodStories.includes('brokenheart') },
+  { id:'a10', name:'夜班守护者',   desc:'让夜班护士非常满意',        chk:g=> g.goodStories && g.goodStories.includes('nurse') },
+  { id:'a11', name:'来自未来的客人',desc:'触发「不太像人的客人」',    chk:g=> g.seenStories && g.seenStories.includes('visitor') },
+  { id:'a12', name:'三种情绪',     desc:'一天内售出 3 种不同情绪',    chk:g=> (g._dayMoods && g._dayMoods.size >= 3) },
+  { id:'a13', name:'完美一天',     desc:'一天内 5 位客人全部非常满意',chk:g=> g._perfectDay },
+  { id:'a14', name:'一掷千金',     desc:'单笔消费 ≥ 300 金币',       chk:g=> g._bigSale },
+  { id:'a15', name:'满级店铺',     desc:'店铺升到 Lv.5',            chk:g=> g.shopLevel >= 5 },
+  { id:'a16', name:'唱片机发烧友', desc:'唱片机升到 Lv.4',          chk:g=> g.recordPlayerLevel >= 4 },
+  { id:'a17', name:'装修大师',     desc:'所有装修项目升到 Lv.3',     chk:g=> Object.values(g.decor).every(v=>v>=3) },
+  { id:'a18', name:'广告大亨',     desc:'使用过广告推广',            chk:g=> g._usedAd },
+  { id:'a19', name:'稀有猎人',     desc:'售出 5 张 ★★★ 唱片',       chk:g=> (g._rareSold||0) >= 5 },
+  { id:'a20', name:'深夜电台',     desc:'第 30 天仍然在营业',        chk:g=> g.day >= 30 }
+];
+
+function checkAchievements(){
+  ACHIEVEMENTS.forEach(a=>{
+    if(Game.achievements.includes(a.id)) return;
+    let ok = false;
+    try{ ok = a.chk(Game); }catch(e){ ok = false; }
+    if(ok){
+      Game.achievements.push(a.id);
+      toast('🏆 成就解锁：' + a.name, 2600);
+    }
+  });
+}
+
+/* ------------------------- 10. 对话系统 ------------------------- */
+const Dialogue = {
+  lines: [], idx:0, typing:false, charIdx:0, timer:null, resolve:null,
+  /* v21：世代号。离开局内会话（回主菜单/启动页）时自增，
+     用来作废"暂停期间被推迟、解除暂停后才执行"的 _do。
+     否则气泡会在主菜单上被重新挂出来。 */
+  _epoch: 0,
+
+  play(lines){
+    var self = this;
+    var ep = this._epoch;          /* 捕获发起时的世代 */
+    return new Promise(function(resolve){
+      var _do = function(){
+        /* v21：等待暂停解除的这段时间里，玩家可能已经离开局内会话
+           （走「暂停 → 返回主菜单」这条路）。此时必须让这次对话作废，
+           否则气泡会被挂到主菜单上。
+           判据只用两个，不能用"是否有菜单界面在显示"——
+           「继续营业」路径里 showScreen(null) 排在 resume() 之后，
+           那一刻 scr-pause 还亮着，那样会误伤正常恢复。 */
+        var leftGame = false;
+        try{
+          if(typeof Game !== 'undefined' && Game && Game.abort) leftGame = true;
+        }catch(e){}
+        if(ep !== self._epoch || leftGame){ resolve(); return; }
+        self.lines = lines;
+        self.idx = 0;
+        self.resolve = resolve;
+        $('dlg').classList.add('on');
+        /* v19：对话开场提示音 */
+        if(window.Sfx) Sfx.open();
+        self.render();
+      };
+      if(window._pauseCtrl && window._pauseCtrl.paused && window._pauseCtrl.promise){ window._pauseCtrl.promise.then(_do); } else { _do(); }
+    });
+  },
+
+  render(){
+    const line = this.lines[this.idx];
+    if(!line){ this.finish(); return; }
+    const [who, text] = line;
+    const nameEl = $('dlgName');
+    if(who === 'g'){ nameEl.textContent = '客人'; nameEl.classList.remove('me'); }
+    else { nameEl.textContent = '店主'; nameEl.classList.add('me'); }
+
+    this.full = text;
+    this.charIdx = 0;
+    this.typing = true;
+    $('dlgNext').style.opacity = '0';
+    $('dlgText').textContent = '';
+
+    clearInterval(this.timer);
+    this.timer = setInterval(()=>{
+      this.charIdx++;
+      /* PATCH v19 逐字说话音效：时长与整句文本长度相关 */
+      if(window.Sfx && this.full){
+        var ch = this.full.charAt(this.charIdx - 1);
+        if(ch && !/[\s，。！？、；：""''《》（）…—]/.test(ch)){
+          Sfx.speak(this.full, this.charIdx);
+        }
+      }
+      $('dlgText').textContent = this.full.slice(0, this.charIdx);
+      if(this.charIdx >= this.full.length){
+        clearInterval(this.timer);
+        this.typing = false;
+        $('dlgNext').style.opacity = '1';
+      }
+    }, 28);
+  },
+
+  advance(){
+    if(this.typing){
+      clearInterval(this.timer);
+      this.typing = false;
+      $('dlgText').textContent = this.full;
+      $('dlgNext').style.opacity = '1';
+      /* 跳过打字机时，补一段与整句长度相符的电子音 */
+      if(window.Sfx && this.full) Sfx.speakAll(this.full);
+      return;
+    }
+    this.idx++;
+    if(this.idx >= this.lines.length){ this.finish(); return; }
+    this.render();
+  },
+
+  finish(){
+    clearInterval(this.timer);
+    $('dlg').classList.remove('on');
+    const r = this.resolve;
+    this.resolve = null;
+    if(r) r();
+  }
+};
+
+document.addEventListener('pointerdown', e=>{
+  if(!$('dlg').classList.contains('on')) return;
+  /* v19 修复：原判断分支互相矛盾（closest 为 null 时还要走 else），
+     简化为——点按钮不推进，点其它任意位置都推进对话。 */
+  if(e.target.closest('button')) return;
+  Dialogue.advance();
+}, true);
+
+/* ------------------------- 11. 故事选择 ------------------------- */
+function pickStory(){
+  const pool = (window.STORIES || []).filter(s => !Game.usedStories.includes(s.id));
+  const list = pool.length ? pool : (window.STORIES || []);
+  if(!list.length) return null;
+  const s = list[rnd(list.length)];
+  Game.usedStories.push(s.id);
+  if(Game.usedStories.length > 40) Game.usedStories.shift();
+  if(!Game.seenStories) Game.seenStories = [];
+  if(!Game.seenStories.includes(s.id)) Game.seenStories.push(s.id);
+  return s;
+}
+
+/* ------------------------- 12. 契合度判定 ------------------------- */
+function judge(track, story){
+  const wants = story.wants || {};
+  let score = 0;
+  const genreHit = (wants.genres||[]).includes(track.genre);
+  if(genreHit) score += 2;
+  let moodHits = 0;
+  (wants.moods||[]).forEach(m => { if(track.moods.includes(m)) moodHits++; });
+  score += moodHits;
+
+  let result;
+  if(score >= 3) result = 'good';
+  else if(score >= 1) result = 'ok';
+  else result = 'bad';
+  return { result, score, genreHit, moodHits };
+}
+
+/* 13. 库存界面 v0.5 */
+function renderInventory(selectable, onPick){
+  const list = $('invGrid');
+  list.className = 'inv-grid';
+  list.innerHTML = '';
+  $('invCount').textContent = '· ' + Game.inventory.length + ' 张';
+  if(!Game.inventory.length){
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:60px 0;font-size:13px">库存空空如也</div>';
+    return;
+  }
+  Game.inventory.forEach(tid=>{
+    const t = getTrackById(tid); if(!t) return;
+    const card = document.createElement('div');
+    card.className = 'inv-card' + (t.rarity === 3 ? ' r3' : t.rarity === 2 ? ' r2' : '');
+    card.innerHTML = '<div class="inv-thumb"><img src="' + getCoverCanvas(t, 200).toDataURL('image/jpeg', 0.85) + '" alt="">' + (t.rarity > 1 ? '<div class="rbadge">' + '★'.repeat(t.rarity) + '</div>' : '') + '</div><div class="inv-info"><div class="nm">' + t.name + '</div><div class="tags"><span class="tag-pill genre">' + t.genre + '</span>' + t.moods.map(function(m){return '<span class="tag-pill mood">' + m + '</span>'}).join('') + '</div><div class="meta">' + t.bpm + ' BPM · ' + (t.rarity === 3 ? '珍稀' : t.rarity === 2 ? '稀有' : '普通') + '</div></div>';
+    card.onclick = function(){ if(selectable && onPick) onPick(t); };
+    list.appendChild(card);
+  });
+}
+/* v28：库存选择的等待必须可作废。
+   原来返回的 Promise 只有"玩家点了一张卡片"这一条出路。
+   一旦中途清空存档 / 回主菜单，这个 Promise 就永远挂着，
+   serveOneGuest 的 while 循环永不退出；更糟的是它并没有死——
+   等玩家下次再点卡片时它会"诈尸"继续跑，去操作一个已经重置过的局面。
+   现在把 resolver 记下来，会话作废时主动解成 null。 */
+let _invWaitResolve = null;
+function openInventoryForGuest(){
+  return new Promise(function(resolve){
+    var done = false;
+    function fin(t){
+      if(done) return;
+      done = true;
+      if(_invWaitResolve === fin) _invWaitResolve = null;
+      resolve(t);
+    }
+    _invWaitResolve = fin;
+    renderInventory(true, function(t){
+      $('scr-inv').classList.remove('on');
+      fin(t);
+    });
+    $('scr-inv').classList.add('on');
+  });
+}
+function cancelInvWait(){
+  var f = _invWaitResolve;
+  _invWaitResolve = null;
+  if(f){ try{ f(null); }catch(e){} }
+}
+/* 14. 音乐播放器 v0.5 (修复暂停 bug) */
+
+function fmt(s){
+  s = Math.max(0, Math.floor(s));
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+
+/* PATCH v10 可视化 */
+function hexA(hex, a){
+  const hh = hex.replace('#','');
+  const r = parseInt(hh.substr(0,2), 16);
+  const g = parseInt(hh.substr(2,2), 16);
+  const b = parseInt(hh.substr(4,2), 16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+function drawViz(track){
+  var c = document.getElementById('viz');
+  if(!c) return;
+  var ctx = c.getContext('2d');
+  if(!c.width){ c.width = Math.floor(window.innerWidth * 0.6); c.height = Math.floor(window.innerHeight * 0.6); }
+  var w = c.width, hh = c.height;
+  ctx.fillStyle = 'rgba(10,6,18,0.26)';
+  ctx.fillRect(0, 0, w, hh);
+  var vol = 0.35;
+  if(AudioEngine.analyser && AudioEngine.freq){
+    AudioEngine.analyser.getByteFrequencyData(AudioEngine.freq);
+    var sum = 0;
+    for(var i=0;i<32;i++) sum += AudioEngine.freq[i];
+    vol = clamp(sum / (32*255), 0.1, 1);
+  }
+  var t = performance.now() / 1000;
+  var cx = w/2, cy = hh*0.40;
+  var c1 = (track && track.colors[0]) || '#ff2e88';
+  var c2 = (track && track.colors[1]) || '#5fe8ff';
+  for(var k=0;k<5;k++){
+    var p = ((t*0.32 + k*0.2) % 1);
+    var radius = p * Math.max(w,hh) * 0.75;
+    var alpha = (1-p) * (0.16 + vol*0.42);
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI*2);
+    ctx.strokeStyle = k%2 ? hexA(c1, alpha) : hexA(c2, alpha);
+    ctx.lineWidth = 2 + vol*14;
+    ctx.stroke();
+  }
+  if(AudioEngine.freq){
+    var n = 40, bw = w / n;
+    for(var j=0;j<n;j++){
+      var v = AudioEngine.freq[j*2] / 255;
+      var bh = v * hh * 0.22;
+      ctx.fillStyle = hexA(c1, 0.55);
+      ctx.fillRect(j*bw + bw*0.18, hh - bh - hh*0.06, bw*0.64, bh);
+    }
+  }
+}
+const Player = {
+  track:null, seconds:30, elapsed:0, playing:false, raf:null, open:false, lastTick:0,
+  show(track, seconds){
+    this.track = track;
+    this.seconds = seconds || 30;
+    $('plName').textContent = track.name;
+    $('plSub').textContent = track.genre + ' · ' + track.moods.join(' / ') + ' · ' + track.bpm + ' BPM';
+    $('plDur').textContent = fmt(this.seconds);
+    const scr = $('scr-player');
+    scr.style.setProperty('--vc1', track.colors[0]);
+    scr.style.setProperty('--vc2', track.colors[1]);
+    $('vinyl').style.setProperty('--vc1', track.colors[0]);
+    $('vinyl').style.setProperty('--vc2', track.colors[1]);
+    if(!$('plDot')){
+      const dot = document.createElement('div');
+      dot.className = 'pl-dot'; dot.id = 'plDot';
+      $('plFill').parentNode.appendChild(dot);
+    }
+    const btn = $('plCollect');
+    if(Game.collection.includes(track.id)){ btn.textContent = '已收藏'; btn.classList.add('done'); }
+    else { btn.textContent = '加入收藏'; btn.classList.remove('done'); }
+    btn.onclick = () => {
+      if(!Game.collection.includes(track.id)){
+        Game.collection.push(track.id);
+        if(!Game.dayCollected) Game.dayCollected = [];
+        if(Game.dayCollected.indexOf(track.id) < 0) Game.dayCollected.push(track.id);
+        btn.textContent = '已收藏'; btn.classList.add('done');
+        toast('💿 已加入收藏'); checkAchievements(); save();
+      }
+    };
+    showScreen('scr-player');
+    this.open = true; this.elapsed = 0;
+    this.start(); this.loopViz();
+  },
+  start(){
+    if(this.playing) return;
+    AudioEngine.play(this.track, this.seconds, this.elapsed);
+    this.lastTick = performance.now();
+    this.playing = true;
+    $('plPlay').textContent = '⏸';
+    $('vinyl').classList.remove('paused');
+  },
+  stop(){
+    if(!this.playing) return;
+    AudioEngine.stop();
+    this.playing = false;
+    $('plPlay').textContent = '▶';
+    $('vinyl').classList.add('paused');
+  },
+  restart(){
+    AudioEngine.stop();
+    this.playing = false; this.elapsed = 0;
+    this.start();
+  },
+  close(){
+    this.open = false; this.stop();
+    if(this.raf) cancelAnimationFrame(this.raf);
+    showScreen(null);
+    if(VIEW.mode === 'record') showScreen('scr-rec');
+  },
+  loopViz(){
+    if(!this.open) return;
+    this.raf = requestAnimationFrame(()=>this.loopViz());
+    const now = performance.now();
+    if(this.playing){
+      this.elapsed += (now - this.lastTick) / 1000;
+      if(this.elapsed >= this.seconds){ this.elapsed = this.seconds; this.stop(); }
+    }
+    this.lastTick = now;
+    const p = clamp(this.elapsed / this.seconds, 0, 1);
+    $('plFill').style.width = (p*100) + '%';
+    const dot = $('plDot'); if(dot) dot.style.left = (p*100) + '%';
+    $('plCur').textContent = fmt(this.elapsed);
+    drawViz(this.track);
+  }
+};
+/* ------------------------- 15. 客人流程 ------------------------- */
+let currentGuestStory = null;
+let currentGuestObj = null;
+
+async function spawnGuest(story){
+  // 清掉旧客人
+  if(guestGroup){
+    shopScene.remove(guestGroup);
+    guestGroup.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); });
+    guestGroup = null;
+  }
+  const hue = (hashStr(story.id) % 360) / 360;
+  guestGroup = makeGuest(story);
+  guestGroup.position.set(4.2, 0, 0.15);
+  guestGroup.rotation.y = -Math.PI/2;
+  shopScene.add(guestGroup);
+
+  // 走进来
+  await walkTo(0.2, 0.15, 1300);
+  // 转身面向镜头
+  await tweenRot(guestGroup, -Math.PI/2, 0, 420);
+}
+
+function hashStr(s){
+  let h = 0;
+  for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function walkTo(tx, tz, dur){
+  return new Promise(resolve => {
+    const sx = guestGroup.position.x, sz = guestGroup.position.z;
+    const t0 = performance.now();
+    const step = () => {
+      const p = clamp((performance.now()-t0)/dur, 0, 1);
+      const e = p<0.5 ? 2*p*p : 1-Math.pow(-2*p+2,2)/2;
+      guestGroup.position.x = sx + (tx-sx)*e;
+      guestGroup.position.z = sz + (tz-sz)*e;
+      // 走路摆动
+      const sw = Math.sin(performance.now()/110) * 0.35 * (1-p);
+      const u = guestGroup.userData;
+      if(u.legL){ u.legL.rotation.x = sw; u.legR.rotation.x = -sw; }
+      if(u.armL){ u.armL.rotation.x = -sw*0.7; u.armR.rotation.x = sw*0.7; }
+      if(p < 1) requestAnimationFrame(step);
+      else {
+        if(u.legL){ u.legL.rotation.x = 0; u.legR.rotation.x = 0; }
+        if(u.armL){ u.armL.rotation.x = 0; u.armR.rotation.x = 0; }
+        resolve();
+      }
+    };
+    step();
+  });
+}
+
+function tweenRot(obj, from, to, dur){
+  return new Promise(resolve => {
+    const t0 = performance.now();
+    const step = () => {
+      const p = clamp((performance.now()-t0)/dur, 0, 1);
+      obj.rotation.y = from + (to-from) * (1-Math.pow(1-p,3));
+      if(p<1) requestAnimationFrame(step); else resolve();
+    };
+    step();
+  });
+}
+
+async function guestLeave(){
+  if(!guestGroup) return;
+  await tweenRot(guestGroup, 0, Math.PI/2, 380);
+  await walkTo(4.6, 0.15, 1200);
+  shopScene.remove(guestGroup);
+  guestGroup = null;
+}
+
+/* ------------------------- 16. 单日流程 ------------------------- */
+async function runOneDay(){
+  if(Game.abort) return;
+
+  /* v20：若当天已抽完卡且未服务满 5 位客人，则接着上次进度继续，
+     不再重新抽卡、不再回退到当天早上。 */
+  const resuming = canResumeDay();
+
+  if(!resuming){
+    Game.guestsToday = 0;
+    Game.daySoldList = [];
+    Game.dayIncome = 0;
+    Game.dayExpense = 0;
+    Game._dayMoods = new Set();
+    Game._dayGood = 0;
+    Game.dayStories = [];
+    Game.dayCollected = [];
+  } else {
+    if(!Game._dayMoods) Game._dayMoods = new Set(Game._dayMoods || []);
+    if(!Game.daySoldList) Game.daySoldList = [];
+    if(!Game.dayStories) Game.dayStories = [];
+  }
+
+  /* HUD 营业额：续跑时按已有数据回填 */
+  var hudEl = document.getElementById('hudRevenue'); if(hudEl) hudEl.style.display = 'block';
+  var hudVal = document.getElementById('hudRevenueVal');
+  if(hudVal){
+    var _sum = 0;
+    for(var _k = 0; _k < (Game.daySoldList || []).length; _k++) _sum += (Game.daySoldList[_k].price || 0);
+    hudVal.textContent = '+' + _sum;
+  }
+
+  if(!resuming){
+    await stockScreen();
+    if(Game.abort) return;
+    /* 抽卡完成 → 标记当天进行中并落盘，这样返回主菜单也不会重抽 */
+    Game._dayInProgress = true;
+    Game.guestsToday = 0;
+    save();
+  }
+
+  const maxGuests = 5;
+  const stories = Game.dayStories || [];
+  $('pauseBtn').classList.add('on');
+
+  for(let i = Game.guestsToday; i < maxGuests; i++){
+    if(Game.abort) return;
+    /* v21：记录"正在服务第几位客人"+成交是否已落定。
+       中途返回主菜单时，若这位客人已经成交（金币/库存已扣），
+       就把她算作已服务，避免重新接待时二次计价。 */
+    Game._curGuest = i;
+    Game._curGuestDone = false;
+    save();
+    await serveOneGuest(stories[i] || null);
+    if(Game.abort){
+      if(Game._curGuestDone){ Game.guestsToday = i + 1; }
+      Game._curGuest = -1;
+      Game._curGuestDone = false;
+      save();
+      return;
+    }
+    Game._curGuestDone = false;
+    Game._curGuest = -1;
+    Game.guestsToday = i + 1;
+    save();
+    checkAchievements();
+    if(Game.abort) return;
+    await wait(300);
+  }
+
+  $('pauseBtn').classList.remove('on');
+
+  /* 当天所有客人服务完毕 → 清掉"进行中"标记，避免下次重进时误续跑 */
+  Game._dayInProgress = false;
+  save();
+
+  if(Game.abort) return;
+  await reportScreen();
+  if(Game.abort) return;
+  await shopManageScreen();
+  if(Game.abort) return;
+
+  Game.day++;
+  Game._dayInProgress = false;
+  save();
+  checkAchievements();
+}
+async function serveOneGuest(story){
+  if(!story){
+    /* 兜底：从故事池里拿一个 */
+    const pool = window.STORIES || [];
+    if(!pool.length){ toast('故事库为空'); return; }
+    story = pool[rnd(pool.length)];
+  }
+  currentGuestStory = story;
+
+  /* v19 修复：成就 a07「雨夜之约」/ a11「来自未来的客人」依赖 Game.seenStories，
+     但记录它的 pickStory() 从未被调用 → 这两个成就永远解锁不了。
+     现在在真正接待客人时登记。 */
+  if(!Game.seenStories) Game.seenStories = [];
+  if(Game.seenStories.indexOf(story.id) < 0) Game.seenStories.push(story.id);
+
+  await spawnGuest(story);
+  await Dialogue.play(story.lines);
+  if(Game.abort) return;
+
+  let chosen = null;
+  while(!chosen){
+    if(Game.abort) return;
+    const track = await openInventoryForGuest();
+    /* v28：null = 会话被作废（清空存档 / 回主菜单），干净退栈。
+       少了这一句，null 会被拿去 RecView.open()，进而读 track.name 报错。 */
+    if(track === null || track === undefined) return;
+    if(Game.abort) return;
+    const action = await RecView.open(track);
+    if(action === 'give'){ chosen = track; }
+    if(Game.abort) return;
+  }
+
+  const j = judge(chosen, story);
+  let price = 0;
+  if(j.result === 'good') price = Math.round(chosen.basePrice * rarityMult(chosen.rarity) * decorMult() * shopMult() * 1.6);
+  else if(j.result === 'ok') price = Math.round(chosen.basePrice * rarityMult(chosen.rarity) * decorMult() * shopMult() * 1.0);
+
+  const idx = Game.inventory.indexOf(chosen.id);
+  if(idx >= 0) Game.inventory.splice(idx, 1);
+
+  Game.daySoldList.push({ track:chosen, result:j.result, price });
+  if(price > 0){
+    Game.coins += price;
+    var _hrv = document.getElementById('hudRevenueVal');
+    if(_hrv){ var _t=0; for(var _i=0;_i<Game.daySoldList.length;_i++) _t += Game.daySoldList[_i].price; _hrv.textContent = '+' + _t; }
+    Game.dayIncome += price;
+    Game.stats.income += price;
+    Game.stats.sold++;
+  }
+  if(j.result === 'good'){
+    Game.stats.good++; Game._dayGood++; Game.repGood++;
+    if(!Game.goodStories) Game.goodStories = [];
+    if(Game.goodStories.indexOf(story.id) < 0) Game.goodStories.push(story.id);
+  }
+  else if(j.result === 'ok'){ Game.stats.ok++; }
+  else { Game.stats.bad++; Game.repBad++; }
+
+  Game.stats.served++;
+  if(chosen.rarity >= 3 && j.result !== 'bad') Game._rareSold = (Game._rareSold||0) + 1;
+  if(price >= 300) Game._bigSale = true;
+  chosen.moods.forEach(function(m){ Game._dayMoods.add(m); });
+
+  /* v21：到此为止这位客人的交易已经全部落定（金币已加、库存已扣、统计已记）。
+     这段全是同步代码，中途不会被打断，所以在这里打标记是原子的。
+     若之后玩家中途返回主菜单，runOneDay 会据此把这位客人计为"已服务"。 */
+  Game._curGuestDone = true;
+
+  const endingText = story.endings[j.result];
+  await Dialogue.play([['g', endingText]]);
+
+  /* v19：成交结果音效 */
+  if(window.Sfx){
+    if(j.result === 'good') Sfx.success();
+    else if(j.result === 'ok') Sfx.coin();
+    else Sfx.fail();
+  }
+
+  const icon = j.result === 'good' ? '💖' : (j.result === 'ok' ? '🙂' : '💔');
+  const title = j.result === 'good' ? '非常满意' : (j.result === 'ok' ? '还算满意' : '被拒绝了');
+  const sub = j.result === 'bad' ? '客人失落地离开了，但故事还在。' :
+              (j.result === 'good' ? '你找到了那个声音。' : '嗯，还不错。');
+  await modal(`
+    <h3>${icon} ${title}</h3>
+    <p>《${chosen.name}》\n${chosen.genre} · ${chosen.moods.join(' / ')}</p>
+    ${price>0 ? `<div class="big">+${price} 金币</div>` : `<div class="big" style="color:var(--muted)">0 金币</div>`}
+    <p>${sub}</p>
+    <button data-val="ok">继续</button>
+  `);
+
+  await guestLeave();
+  checkAchievements();
+  save();
+}
+/* PATCH v12 进货配平 */
+function permute5(){
+  const result = [];
+  const perm = [];
+  const used = [false, false, false, false, false];
+  function bt(){
+    if(perm.length === 5){ result.push(perm.slice()); return; }
+    for(let i = 0; i < 5; i++){
+      if(used[i]) continue;
+      used[i] = true;
+      perm.push(i);
+      bt();
+      perm.pop();
+      used[i] = false;
+    }
+  }
+  bt();
+  return result;
+}
+const ALL_PERMS = permute5();
+
+function checkMatch(inventory, stories){
+  for(let pi = 0; pi < ALL_PERMS.length; pi++){
+    const perm = ALL_PERMS[pi];
+    let good = 0, nonBad = 0;
+    for(let i = 0; i < 5; i++){
+      const t = TRACK_BY_ID[inventory[perm[i]]];
+      if(!t) continue;
+      const j = judge(t, stories[i]);
+      if(j.result === 'good') good++;
+      if(j.result !== 'bad') nonBad++;
+    }
+    if(good >= 2 && nonBad >= 3) return true;
+  }
+  return false;
+}
+
+function stockScreen(){
+  return new Promise(resolve => {
+    const c2Lock = Game.day < 3, c3Lock = Game.day < 7;
+    const html = '<h3>今日进货</h3><p>第 ' + Game.day + ' 天 · 金币 <b style="color:var(--gold)">' + Game.coins + '</b></p>' +
+      '<button data-val="normal">普通进货 · 免费<br><span style="font-size:11px;opacity:.8">随机 5 张</span></button>' +
+      '<button data-val="fine" ' + (c2Lock?'disabled style="opacity:.4"':'') + '>精选 · 150 金币<br><span style="font-size:11px;opacity:.8">' + (c2Lock?'第 3 天解锁':'5 张 + 1 张指定情绪') + '</span></button>' +
+      '<button data-val="rare" ' + (c3Lock?'disabled style="opacity:.4"':'') + '>稀有 · 450 金币<br><span style="font-size:11px;opacity:.8">' + (c3Lock?'第 7 天解锁':'5 张 + 1 张 ★★ 以上') + '</span></button>';
+    modal(html).then(async val => {
+      let cost = 0, bonus = null;
+      if(val === 'fine'){ cost = 150; bonus = 'mood'; }
+      if(val === 'rare'){ cost = 450; bonus = 'rare'; }
+      if(Game.coins < cost){ toast('金币不足，改为普通进货'); cost = 0; bonus = null; }
+      Game.coins -= cost; Game.dayExpense += cost; Game.stats.expense += cost;
+
+      /* 广告推广效果：投放期内每批进货额外赠送 1 张稀有唱片 */
+      if(Game.adBoost > 0){ bonus = bonus || 'ad'; }
+
+      /* 循环抽取直到满足配平条件 */
+      let finalInv = null, finalStories = null;
+      const storyPoolMaster = (window.STORIES || []).slice();
+      function makeBonus(list){
+        if(bonus === 'mood'){
+          const moods = MOODS[rnd(MOODS.length)];
+          const cand = TRACKS.filter(function(t){ return t.moods.indexOf(moods) >= 0; });
+          if(cand.length) list.push(cand[rnd(cand.length)].id);
+        } else if(bonus === 'rare' || bonus === 'ad'){
+          const cand = TRACKS.filter(function(t){ return t.rarity >= 2; });
+          if(cand.length) list.push(cand[rnd(cand.length)].id);
+        }
+      }
+      for(let attempt = 0; attempt < 300; attempt++){
+        const inv = [];
+        for(let i = 0; i < 5; i++) inv.push(TRACKS[rnd(TRACKS.length)].id);
+        makeBonus(inv);
+        /* 抽 5 个不重复故事 */
+        const pool = storyPoolMaster.slice();
+        const stories = [];
+        for(let i = 0; i < 5 && pool.length > 0; i++){
+          const idx = rnd(pool.length);
+          stories.push(pool[idx]);
+          pool.splice(idx, 1);
+        }
+        if(stories.length < 5) continue;
+        if(checkMatch(inv.slice(0, 5), stories)){
+          finalInv = inv; finalStories = stories;
+          break;
+        }
+      }
+      /* 兜底：兜不住也存 */
+      if(!finalInv){
+        finalInv = [];
+        for(let i = 0; i < 5; i++) finalInv.push(TRACKS[rnd(TRACKS.length)].id);
+        makeBonus(finalInv);
+        finalStories = [];
+        const pool = storyPoolMaster.slice();
+        for(let i = 0; i < 5; i++){ const idx = rnd(pool.length); finalStories.push(pool[idx]); pool.splice(idx,1); }
+      }
+
+      /* v19 修复：付费/广告赠送的那张唱片原被 slice(0,5) 丢弃，玩家花了钱却拿不到。
+         现在完整保留 6 张，多出的 1 张是额外选择。 */
+      Game.inventory = finalInv.slice();
+      Game.dayStories = finalStories;
+      const drawn = finalInv.map(function(id){ return getTrackById(id); }).filter(Boolean);
+      save();
+      await showDrawScreen(drawn);
+      resolve();
+    });
+  });
+}
+function showDrawScreen(drawn){
+  return new Promise(resolve => {
+    let scr = $('scr-draw');
+    if(!scr){
+      scr = document.createElement('div');
+      scr.id = 'scr-draw'; scr.className = 'screen';
+      scr.innerHTML = '<div class="draw-bg"></div><div class="draw-header">今日进货</div><div class="draw-grid" id="drawGrid"></div><div class="draw-footer"><button class="draw-btn" id="drawDone" disabled>收入库存</button></div>';
+      document.body.appendChild(scr);
+    }
+    const grid = $('drawGrid');
+    const done = $('drawDone');
+    grid.innerHTML = ''; done.disabled = true; done.textContent = '收入库存';
+    /* v19：6 张（付费/广告进货）改用 3 列布局，保证小屏按钮可见 */
+    grid.classList.toggle('n6', drawn.length > 5);
+    done.onclick = () => { $('scr-draw').classList.remove('on'); resolve(); };
+    drawn.forEach((t, i) => {
+      const card = document.createElement('div');
+      card.className = 'draw-card';
+      const inner = document.createElement('div'); inner.className = 'draw-inner';
+      const back = document.createElement('div'); back.className = 'draw-face draw-back'; back.innerHTML = '<span>?</span>';
+      const front = document.createElement('div'); front.className = 'draw-face draw-front';
+      front.style.backgroundImage = 'url(' + getCoverCanvas(t, 200).toDataURL('image/jpeg', 0.85) + ')';
+      inner.appendChild(back); inner.appendChild(front); card.appendChild(inner);
+      if (t.rarity >= 2) { const glow = document.createElement('div'); glow.className = 'draw-glow r' + t.rarity; card.appendChild(glow); }
+      grid.appendChild(card);
+      setTimeout(() => { card.classList.add('flipped'); }, 400 + i * 250);
+    });
+    setTimeout(() => { done.disabled = false; }, 400 + drawn.length * 250 + 200);
+    /* PATCH v05b */ scr.classList.add('on');
+  });
+}
+/* ------------------------- 18. 日结报告 ------------------------- */
+function reportScreen(){
+  return new Promise(resolve => {
+    const good = Game.daySoldList.filter(function(x){return x.result==='good'}).length;
+    const total = Game.daySoldList.length;
+    if(good === 5 && total === 5) Game._perfectDay = true;
+
+    /* 今日收藏列表 */
+    let colRows = '';
+    var dayCol = Game.dayCollected || [];
+    if(dayCol.length){
+      colRows = dayCol.map(function(tid){
+        var t = getTrackById(tid);
+        if(!t) return '';
+        return '<div class="rep-row"><span>《' + t.name + '》</span><b style="color:var(--gold)">' + t.genre + '</b></div>';
+      }).join('');
+    } else {
+      colRows = '<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">今日未收藏任何唱片</div>';
+    }
+
+    $('scr-report').classList.add('on');
+    $('scr-report').innerHTML = `
+      <div class="topbar"><h2>第 ${Game.day} 天 · 营业结束</h2></div>
+      <div class="body-scroll">
+        <div style="text-align:center;padding:28px 0 18px">
+          <div style="font-size:11px;letter-spacing:.3em;color:var(--muted);margin-bottom:8px">TODAY REVENUE</div>
+          <div style="font-size:56px;font-weight:900;font-style:italic;color:var(--gold);text-shadow:3px 3px 0 rgba(255,209,102,.25);line-height:1">+${Game.dayIncome}</div>
+          <div style="font-size:11.5px;color:var(--muted);letter-spacing:.2em;margin-top:10px">今日营业额 · 金币</div>
+        </div>
+        <div class="sep"></div>
+        <div class="h-sec">今日收藏</div>
+        ${colRows}
+        <div class="sep"></div>
+        <div style="display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--muted);padding:10px 0">
+          <span>💖 满意 <b style="color:var(--magenta)">${good}</b></span>
+          <span>📀 售出 <b style="color:var(--cyan)">${total}</b></span>
+          <span>💰 余额 <b style="color:var(--gold)">${Game.coins}</b></span>
+        </div>
+        <button class="menu-item" style="width:100%;margin-top:24px" id="repNext"><span class="idx">→</span><span class="tx">进入店铺管理</span></button>
+      </div>
+    `;
+    $('repNext').onclick = function(){
+      $('scr-report').classList.remove('on');
+      resolve();
+    };
+  });
+}
+function shopManageScreen(){
+  return new Promise(resolve => {
+    const shopCosts = [0, 0, 600, 1800, 4000, 9000];
+    const decorCosts = [0, 0, 500, 1500];
+    const rpCosts    = [0, 0, 400, 1200, 3000];
+
+    function render(){
+      const shopUp = Game.shopLevel < 5;
+      const shopPrice = shopUp ? shopCosts[Game.shopLevel + 1] : 0;
+      const rpUp = Game.recordPlayerLevel < 4;
+      const rpPrice = rpUp ? rpCosts[Game.recordPlayerLevel + 1] : 0;
+      const decorNames = { poster:'海报墙', rug:'地毯', neon:'霓虹灯', sign:'招牌', sofa:'沙发' };
+
+      let decorRows = Object.keys(Game.decor).map(function(k){
+        const lv = Game.decor[k];
+        const can = lv < 3;
+        const price = can ? decorCosts[lv+1] : 0;
+        return '<div class="shop-item">' +
+          '<div class="shop-info"><div class="shop-name">' + decorNames[k] + '</div><div class="shop-lv">Lv.' + lv + ' / 3</div></div>' +
+          (can ? '<button class="shop-btn cy" data-decor="' + k + '">升级 · ' + price + '</button>' : '<span class="shop-max">已满级</span>') +
+        '</div>';
+      }).join('');
+
+      const adPrice = Game.day >= 15 ? 2000 : (Game.day >= 10 ? 800 : (Game.day >= 5 ? 300 : 0));
+
+      $('scr-shop').classList.add('on');
+      $('scr-shop').innerHTML = `
+        <div class="topbar"><button class="tbtn" id="shopBack">←</button><h2>店铺管理</h2><span style="color:var(--gold);font-weight:900;font-size:14px">${Game.coins} 金币</span></div>
+        <div class="body-scroll" style="padding:20px 20px calc(30px + env(safe-area-inset-bottom))">
+          <div class="h-sec">扩张</div>
+          <div class="shop-item">
+            <div class="shop-info"><div class="shop-name">店铺等级</div><div class="shop-lv">Lv.${Game.shopLevel} / 5 · 每日 5 位客人</div></div>
+            ${shopUp ? '<button class="shop-btn" id="upShop">升级 · ' + shopPrice + '</button>' : '<span class="shop-max">已满级</span>'}
+          </div>
+          <div class="shop-item">
+            <div class="shop-info"><div class="shop-name">唱片机</div><div class="shop-lv">Lv.${Game.recordPlayerLevel} / 4 · 试听 ${[0,15,30,30,30][Game.recordPlayerLevel]} 秒</div></div>
+            ${rpUp ? '<button class="shop-btn cy" id="upRp">升级 · ' + rpPrice + '</button>' : '<span class="shop-max">已满级</span>'}
+          </div>
+
+          <div class="h-sec">装修</div>
+          ${decorRows}
+
+          <div class="h-sec">推广</div>
+          ${adPrice ? '<div class="shop-item"><div class="shop-info"><div class="shop-name">霓虹屏广告</div><div class="shop-lv">吸引稀有客人</div></div><button class="shop-btn gd" id="doAd">投放 · ' + adPrice + '</button></div>'
+            : '<div style="color:var(--muted);font-size:12.5px;padding:10px 0;text-align:center">第 5 天解锁</div>'}
+
+          <div style="margin-top:32px">
+            <button class="menu-item" style="width:100%" id="nextDay"><span class="idx">→</span><span class="tx">开始新的一天</span></button>
+          </div>
+        </div>
+        <style>
+          .shop-item{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;background:linear-gradient(100deg,rgba(255,255,255,.045),rgba(26,13,46,.92));border-left:3px solid var(--magenta);transform:skewX(-1.2deg)}
+          .shop-item>*{transform:skewX(1.2deg)}
+          .shop-info{flex:1;min-width:0}
+          .shop-name{font-size:15px;font-weight:800;letter-spacing:.04em;margin-bottom:4px}
+          .shop-lv{font-size:11px;color:var(--muted);letter-spacing:.1em}
+          .shop-btn{padding:10px 18px;border:none;background:var(--magenta);color:#fff;font-family:inherit;font-weight:800;font-size:12.5px;letter-spacing:.08em;cursor:pointer;transform:skewX(-6deg);box-shadow:0 0 14px rgba(255,46,136,.35);white-space:nowrap}
+          .shop-btn.cy{background:var(--cyan);color:#06222c;box-shadow:0 0 14px rgba(95,232,255,.35)}
+          .shop-btn.gd{background:var(--gold);color:#2a1a00;box-shadow:0 0 14px rgba(255,209,102,.35)}
+          .shop-btn:active{transform:skewX(-6deg) scale(.94)}
+          .shop-max{font-size:11px;color:var(--muted);letter-spacing:.12em;padding:6px 12px;border:1px dashed rgba(255,255,255,.2)}
+        </style>
+      `;
+
+      const upShop = $('upShop');
+      if(upShop) upShop.onclick = function(){
+        if(Game.coins < shopPrice){ toast('金币不足'); return; }
+        Game.coins -= shopPrice; Game.shopLevel++; save(); render();
+        toast('店铺升级到 Lv.' + Game.shopLevel);
+      };
+      const upRp = $('upRp');
+      if(upRp) upRp.onclick = function(){
+        if(Game.coins < rpPrice){ toast('金币不足'); return; }
+        Game.coins -= rpPrice; Game.recordPlayerLevel++; save(); render();
+        toast('唱片机升级到 Lv.' + Game.recordPlayerLevel);
+      };
+      document.querySelectorAll('[data-decor]').forEach(function(b){
+        b.onclick = function(){
+          const k = b.getAttribute('data-decor');
+          const lv = Game.decor[k];
+          const price = decorCosts[lv+1];
+          if(Game.coins < price){ toast('金币不足'); return; }
+          Game.coins -= price; Game.decor[k]++; save(); render();
+          toast('装修升级！基准价提升');
+        };
+      });
+      const doAd = $('doAd');
+      if(doAd) doAd.onclick = function(){
+        if(Game.coins < adPrice){ toast('金币不足'); return; }
+        Game.coins -= adPrice; Game.adBoost = 3; Game._usedAd = true;
+        save(); render();
+        toast('广告投放成功');
+      };
+      $('nextDay').onclick = function(){
+        $('scr-shop').classList.remove('on');
+        if(Game.adBoost > 0) Game.adBoost--;
+        resolve();
+      };
+    }
+    render();
+  });
+}
+/* ------------------------- 20. 收藏 / 成就 / 设置 ------------------------- */
+/* PATCH v11 收藏 v3 */
+function openCollection(){
+  const list = $('colGrid');
+  list.className = 'inv-grid';
+  list.innerHTML = '';
+  $('colCount').textContent = '已收藏 ' + Game.collection.length + ' / 100';
+  if(!Game.collection.length){
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px 0;font-size:13px">还没有收藏任何唱片<br>点击下方输入种子码预览并导入</div>';
+  } else {
+    Game.collection.forEach(function(tid){
+      const t = getTrackById(tid); if(!t) return;
+      const card = document.createElement('div');
+      card.className = 'inv-card' + (t.rarity === 3 ? ' r3' : t.rarity === 2 ? ' r2' : '');
+      card.style.position = 'relative';
+      card.dataset.tid = String(tid);
+      card.innerHTML = '<div class="inv-thumb"><img src="' + getCoverCanvas(t, 200).toDataURL('image/jpeg', 0.85) + '" alt="">' + (t.rarity > 1 ? '<div class="rbadge">' + '★'.repeat(t.rarity) + '</div>' : '') + '</div><div class="inv-info"><div class="nm">' + t.name + '</div><div class="tags"><span class="tag-pill genre">' + t.genre + '</span>' + t.moods.map(function(m){return '<span class="tag-pill mood">' + m + '</span>'}).join('') + '</div><div class="meta">' + t.bpm + ' BPM · 种子 ' + t.seed + '</div></div>' +
+        '<button class="col-del" data-del="' + tid + '" title="移除" style="position:absolute;top:8px;right:8px;width:32px;height:32px;border:none;background:rgba(255,46,136,.55);color:#fff;font-size:18px;font-weight:800;cursor:pointer;z-index:20;line-height:1;padding:0">×</button>';
+      list.appendChild(card);
+    });
+  }
+  /* 事件委托：无论卡片怎么重建，只绑定一次 */
+  if(!list._bound){
+    list._bound = true;
+    list.addEventListener('click', function(e){
+      /* 删除按钮：优先处理，绝不冒泡 */
+      const del = e.target.closest('.col-del');
+      if(del){
+        e.stopPropagation();
+        e.preventDefault();
+        const idRaw = del.getAttribute('data-del');
+        let idx = -1;
+        for(let i = 0; i < Game.collection.length; i++){
+          if(String(Game.collection[i]) === String(idRaw)){ idx = i; break; }
+        }
+        if(idx >= 0){
+          Game.collection.splice(idx, 1);
+          save();
+          toast('已移除');
+          openCollection();
+        }
+        return;
+      }
+      /* 点卡片 → 打开观赏 */
+      const card = e.target.closest('.inv-card');
+      if(card){
+        const tid = card.dataset.tid;
+        const t = getTrackById(tid);
+        if(!t) return;
+        showScreen(null);
+        RecView.open(t).then(function(){
+          openCollection();
+          showScreen('scr-collection');
+        });
+      }
+    }, true);
+  }
+  /* 种子码导入 */
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-top:24px;padding:16px;border-top:1px solid rgba(255,255,255,.08)';
+  wrap.innerHTML = '<div style="font-size:11px;letter-spacing:.2em;color:var(--gold);font-weight:800;margin-bottom:10px">种子码预览与导入</div><div style="display:flex;gap:8px"><input id="seedInput" type="number" placeholder="输入任意数字" style="flex:1;padding:12px;background:#0a0612;border:1px solid rgba(255,255,255,.2);color:var(--bone);font-family:inherit;font-size:14px"><button id="seedImport" style="padding:12px 20px;border:none;background:var(--gold);color:#2a1a00;font-weight:800;font-family:inherit;font-size:13px">预览</button></div>';
+  list.appendChild(wrap);
+  setTimeout(function(){
+    const btn = document.getElementById('seedImport');
+    if(btn) btn.onclick = function(){
+      const v = parseInt(document.getElementById('seedInput').value, 10);
+      if(!v || isNaN(v)){ toast('请输入数字'); return; }
+      const track = generateTrackFromSeed(v);
+      if(!track){ toast('无法生成唱片'); return; }
+      const preview = document.createElement('div');
+      preview.style.cssText = 'position:fixed;inset:0;z-index:60;background:rgba(6,3,12,.9);display:flex;align-items:center;justify-content:center;padding:24px';
+      preview.innerHTML = '<div style="width:100%;max-width:340px;background:linear-gradient(160deg,#1a0d2e,#0a0612);border:1px solid rgba(255,46,136,.5);border-top:5px solid #ff2e88;padding:24px 20px;text-align:center;box-shadow:0 0 60px rgba(255,46,136,.25)"><img src="' + getCoverCanvas(track, 300).toDataURL('image/jpeg', 0.85) + '" style="width:180px;height:180px;border-radius:4px;margin-bottom:14px"><h3 style="font-size:20px;font-weight:900;font-style:italic;margin-bottom:8px">' + track.name + '</h3><p style="font-size:12px;color:rgba(180,165,220,.7);margin-bottom:18px">' + track.genre + ' · ' + track.moods.join(' / ') + ' · ' + track.bpm + ' BPM</p><div style="display:flex;gap:10px;justify-content:center"><button id="pvAdd" style="padding:12px 24px;border:none;background:#ff2e88;color:#fff;font-weight:800;font-family:inherit;font-size:14px">加入收藏</button><button id="pvCancel" style="padding:12px 24px;border:2px solid rgba(255,255,255,.25);background:transparent;color:#f2ede4;font-weight:800;font-family:inherit;font-size:14px">取消</button></div></div>';
+      document.body.appendChild(preview);
+      document.getElementById('pvAdd').onclick = function(){
+        if(!Game.collection.includes(track.id)){
+          Game.collection.push(track.id);
+          save(); toast('💿 已加入：' + track.name);
+        } else { toast('已在收藏中'); }
+        document.body.removeChild(preview);
+        openCollection();
+      };
+      document.getElementById('pvCancel').onclick = function(){
+        document.body.removeChild(preview);
+      };
+    };
+  }, 30);
+  showScreen('scr-collection');
+}
+
+/* 无限随机唱片生成 */
+
+/* PATCH v16 反查动态唱片 */
+function getTrackById(tid){
+  if(TRACK_BY_ID[tid]) return TRACK_BY_ID[tid];
+  var s = String(tid);
+  if(s.charAt(0) === 's'){
+    var sd = parseInt(s.slice(1), 10);
+    if(!isNaN(sd)) return generateTrackFromSeed(sd);
+  }
+  return null;
+}
+function generateTrackFromSeed(seed){
+  const r = mulberry32(Math.abs(seed) | 0);
+  const genre = GENRES[Math.floor(r()*GENRES.length)];
+  const moodN = r() < 0.55 ? 1 : 2;
+  const moods = [];
+  let guard = 0;
+  while(moods.length < moodN && guard++ < 40){
+    const m = MOODS[Math.floor(r()*MOODS.length)];
+    if(!moods.includes(m)) moods.push(m);
+  }
+  const name = NAME_A[Math.floor(r()*NAME_A.length)] + NAME_B[Math.floor(r()*NAME_B.length)];
+  const bpm = 60 + Math.floor(r()*80);
+  const rootMidi = 48 + Math.floor(r()*12);
+  const rr = r();
+  const rarity = rr < 0.05 ? 3 : (rr < 0.25 ? 2 : 1);
+  const id = 's' + seed;
+  const track = {
+    id: id, name, genre, moods, bpm, rootMidi,
+    seed: seed, rarity,
+    scaleName: GENRE_SCALE[genre] || 'minor',
+    colors: GENRE_COLORS[genre],
+    basePrice: Math.round(55 + r()*75)
+  };
+  TRACK_BY_ID[id] = track;
+  return track;
+}
+function openAchievements(){
+  const list = $('achList');
+  list.innerHTML = ACHIEVEMENTS.map(a=>{
+    const got = Game.achievements.includes(a.id);
+    return `<div class="card ${got?'gold':'locked'}">
+      <div style="font-size:20px">${got?'🏆':'🔒'}</div>
+      <div style="flex:1">
+        <div class="cn">${got ? a.name : '???'}</div>
+        <div class="cd">${got ? a.desc : '（未解锁）'}</div>
+      </div>
+    </div>`;
+  }).join('') + `<div style="text-align:center;color:var(--muted);font-size:12px;margin-top:16px">已解锁 ${Game.achievements.length} / ${ACHIEVEMENTS.length}</div>`;
+  showScreen('scr-ach');
+}
+
+/* ------------------------- 20.5 会话复位（v28） -------------------------
+   ── 为什么必须把这段抽出来 ──
+   「返回主菜单」和「重新开始（清空存档）」都要"彻底离开当前局内会话"。
+   之前只有 home 分支手写了这套流程，而 btnReset 只调了一句 resetGame()，
+   于是留下了一个真实卡死 bug（玩家已复现）：
+
+     暂停菜单 → 设置 → 重新开始
+       · resetGame() 把 inventory 清成了 []，但没有补回初始库存
+       · 日循环协程仍然活着，暂停也没解除，屏幕还停在设置页
+       · 玩家以为回到了游戏，其实库存为空 → 无片可给客人
+       · openInventoryForGuest() 永远等不到卡片点击
+       · serveOneGuest 卡在 await 上：客人永远无法成交，游戏彻底卡死
+
+   现在拆成两个函数：abort 只负责"作废"，两个出口各自决定去哪。 */
+
+/* 只作废：把当前局内会话的所有"等待中的东西"全部解掉并让旧协程退栈。
+   不切屏、不改 BGM 面——由调用者决定接下来去哪。 */
+function abortGameSession(){
+  /* 1) 作废日循环：自增世代令牌 + 置 abort。
+        旧循环醒来发现令牌过期会立刻退栈，不会和新循环抢客人。 */
+  Game._gen = (Game._gen || 0) + 1;
+  Game.abort = true;
+
+  /* 2) 解掉所有"挂起的等待"。这是本次修复的核心：
+        库存选择 / 唱片界面各自持有一个永不 resolve 的 Promise，
+        不解掉的话对应协程会永远卡在 await 上（真死锁，不报错）。 */
+  cancelInvWait();
+  if(typeof RecView !== 'undefined' && RecView.cancel) RecView.cancel();
+
+  /* 3) 撤对话框，并作废"因暂停被推迟、尚未执行"的 Dialogue.play() */
+  hideDialogue(true);
+
+  /* 4) 清掉暂停现场，避免残留的 _prePauseScreen 影响下一次暂停 */
+  takePauseRestore();
+
+  /* 5) 撤掉台上还站着的客人 */
+  try{ if(guestGroup){ shopScene.remove(guestGroup); guestGroup = null; } }catch(e){}
+
+  /* 6) 关掉一切浮层：通用弹窗、抽卡页（它不在 SCREENS 里，showScreen 管不到） */
+  try{ $('modal').classList.remove('on'); }catch(e){}
+  try{ var _d = $('scr-draw'); if(_d) _d.classList.remove('on'); }catch(e){}
+
+  /* 7) 解除暂停。此时 Game.abort 仍为 true，
+        _pauseCtrl.resume() 会据此把被推迟的旧气泡丢掉而不是还原到新界面上
+        （v21 踩过的坑）。调用者若还要继续玩，需在此之后自行把 abort 置回 false。 */
+  if(window._pauseCtrl){ try{ window._pauseCtrl.resume(); }catch(e){} }
+  hideDialogue(true);
+}
+
+/* 出口 A：彻底离开局内，回到主菜单 */
+function leaveGameSession(){
+  abortGameSession();
+  setBgmCtx('menu');
+  showScreen('scr-start');
+  $('pauseBtn').classList.remove('on');
+  refreshSaveInfo();
+}
+
+/* 出口 B：立刻开一局全新的（清空存档后用）。
+   用户要求"清除缓存后直接重新开始游戏"，而不是回到一个空库存的旧局。 */
+function beginNewGame(){
+  abortGameSession();
+  setBgmCtx('game');
+  showScreen(null);
+  VIEW.mode = 'shop';
+  $('pauseBtn').classList.add('on');
+  Game.abort = false;
+  save();
+  gameLoop(Game._gen);
+}
+
+/* ------------------------- 21. 菜单事件绑定 ------------------------- */
+document.querySelectorAll('#scr-start .menu-item, #scr-pause .menu-item').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const act = btn.dataset.act;
+    if(act === 'play'){
+      $('pauseBtn').classList.remove('on');
+      /* v28：让可能还在跑的旧日循环彻底作废（返回主菜单的瞬间又点开始的情况） */
+      Game._gen = (Game._gen || 0) + 1;
+      Game.abort = true;
+      if(hasSave()){
+        const v = await modal(`
+          <h3>继续游戏？</h3>
+          <p>检测到存档：第 ${Game.day} 天\n金币 ${Game.coins}</p>
+          <button data-val="continue">继续 第 ${Game.day} 天</button>
+          <button class="ghost" data-val="new">重新开始</button>
+        `, { bypassPause: true });
+        if(v === 'new'){ resetGame(); loadDefaults(); }
+      } else {
+        resetGame();
+        loadDefaults();
+      }
+      /* v28：统一入口。内含「显式声明 game 音乐面」——
+         scr-start → null 单看目标屏名无法区分"回局内"和"从主菜单进局内"，
+         少了这一步，开局第一声还停在主菜单曲（v26 踩过的坑）。 */
+      beginNewGame();
+    }
+    else if(act === 'collection'){ window._backTarget = $('scr-pause').classList.contains('on') ? 'scr-pause' : 'scr-start'; openCollection(); }
+    else if(act === 'ach'){ openAchievements(); }
+    else if(act === 'settings'){ window._backTarget = $('scr-pause').classList.contains('on') ? 'scr-pause' : 'scr-start'; openSettings(); }
+    else if(act === 'resume'){
+      if(window._pauseCtrl) window._pauseCtrl.resume();
+      /* v26：还原暂停前的现场（关键修复）。
+         之前这里写死 showScreen(null)，会把暂停前打开的 scr-rec 一并抹掉，
+         导致 RecView.open() 的 Promise 永远等不到 resolve、
+         serveOneGuest 卡在 await —— 客人无法成交、游戏软锁。
+         现在改成"从哪暂停就回哪"。
+         music 面：仅当暂停前确实在局内面时才切回 game。 */
+      const back = takePauseRestore();
+      if(back.inGame) setBgmCtx('game');
+      showScreen(back.screen);
+      if(Game._dayInProgress) $('pauseBtn').classList.add('on');
+      /* scr-rec 上的 ☰ 已经不在视野里（我们刚从暂停回来），
+         按原先的设计：唱片界面用顶部 ☰ 暂停，所以这里保持暂停按钮隐藏 */
+      if(back.screen === 'scr-rec') $('pauseBtn').classList.remove('on');
+    }
+    else if(act === 'home'){
+      const v = await modal(`
+        <h3>返回主菜单</h3>
+        <p>进度已自动保存。<br>确定要回到主菜单吗？</p>
+        <button data-val="yes">返回主菜单</button>
+        <button class="ghost" data-val="no">继续营业</button>
+      `, { bypassPause: true });
+      if(v === 'yes'){
+        window._fromPauseMenu = false; window._backTarget = null;
+        /* v28：先落盘保留进度，再走统一的会话复位。
+           顺序不能反 —— leaveGameSession() 会置 abort 并发起各种"解挂"，
+           进度必须在局面还完整时先存下来。 */
+        save();
+        leaveGameSession();
+      }
+    }
+  });
+});
+
+function loadDefaults(){
+  // 初始金币与库存
+  Game.coins = 200;
+  Game.inventory = [];
+  const pool = TRACKS.slice();
+  for(let i=0;i<6;i++) Game.inventory.push(pool[rnd(pool.length)].id);
+  Game.stats = { income:0, expense:0, served:0, sold:0, good:0, ok:0, bad:0, history:[] };
+  Game.seenStories = [];
+  Game.goodStories = [];
+  Game.usedStories = [];
+  Game._rareSold = 0;
+}
+
+async function gameLoop(gen){
+  /* v21：世代令牌。重新点「开始游戏」时 _gen 会自增，
+     旧循环发现自己的令牌过期就立刻退栈，不会和新循环抢客人。 */
+  if(typeof gen !== 'number') gen = Game._gen;
+  while(!Game.abort && Game._gen === gen){
+    await runOneDay();
+  }
+  /* 只有"自己仍然是当前世代"时才清 abort，
+     否则会把新循环刚设好的 abort=false 覆盖掉。 */
+  if(Game._gen === gen) Game.abort = false;
+}
+
+/* ------------------------- 22. 暂停按钮 ------------------------- */
+$('pauseBtn').onclick = ()=>{
+  if(window._pauseCtrl) window._pauseCtrl.pause();
+  /* v26：记录暂停现场，供「继续营业」原样还原（防止选唱片协程卡死） */
+  beginPause();
+  $('pauseInfo').textContent = '第 ' + Game.day + ' 天 · 已服务 ' + Game.guestsToday + '/5 位客人';
+  showScreen('scr-pause');
+  $('pauseBtn').classList.remove('on');
+};
+
+/* ------------------------- 23. 唱片观赏按钮 ------------------------- */
+/* v19 修复：这些按钮原先被重复绑定（onclick + 两处 addEventListener），
+   试听会被触发多次、开出多条 requestAnimationFrame 循环。
+   现在统一只用命名函数绑定一次，并用 _bound 标记防止重复。 */
+function recListenNow(){
+  if(!RecView.track) return;
+  try{
+    const secs = [0,15,30,30,30][Game.recordPlayerLevel] || 15;
+    Player.show(RecView.track, secs);
+  }catch(err){
+    console.error('试听错误', err);
+    toast('试听出错：' + err.message);
+  }
+}
+function recCollectNow(){
+  if(!RecView.track) return;
+  if(Game.collection.includes(RecView.track.id)){ toast('已在收藏中'); return; }
+  Game.collection.push(RecView.track.id);
+  if(!Game.dayCollected) Game.dayCollected = [];
+  if(Game.dayCollected.indexOf(RecView.track.id) < 0) Game.dayCollected.push(RecView.track.id);
+  toast('💿 已加入收藏');
+  checkAchievements(); save();
+}
+(function bindRecordViewButtons(){
+  const btns = [
+    ['recClose', ()=> RecView.close('back')],
+    ['recPause', ()=>{
+      /* v26：唱片界面的 ☰ 也要登记现场，继续营业时才能回到唱片界面，
+         否则 RecView.open() 永远等不到 resolve，选片流程卡死。 */
+      beginPause('scr-rec');
+      window._pauseInfoExtra = '正在挑选唱片';
+      $('pauseInfo').textContent = '第 ' + Game.day + ' 天 · 正在挑选唱片';
+      showScreen('scr-pause');
+    }],
+    ['recFlip',  ()=>{ if(window.__flipRecord) window.__flipRecord(); }],
+    ['recGive',  ()=> RecView.close('give')],
+    ['recListen', recListenNow],
+    ['recCollect', recCollectNow]
+  ];
+  btns.forEach(function(pair){
+    const b = $(pair[0]);
+    if(!b || b._bound) return;
+    b._bound = true;
+    /* 阻止手势层抢事件 */
+    b.addEventListener('pointerdown', function(e){ e.stopPropagation(); }, true);
+    b.addEventListener('click', function(e){
+      e.stopPropagation(); e.preventDefault();
+      pair[1]();
+    }, true);
+  });
+})();
+
+/* ------------------------- 24. 播放器按钮 ------------------------- */
+$('plClose').onclick = ()=> Player.close();
+$('plPlay').onclick = ()=>{
+  if(Player.playing){ Player.stop(); }
+  else { Player.start(); }
+};
+$('plRestart').onclick = ()=>{ Player.restart(); };
+
+/* ------------------------- 25. 返回按钮 ------------------------- */
+document.querySelectorAll('[data-back]').forEach(b=>{
+  b.onclick = ()=>{
+    var target = window._backTarget || null;
+    window._backTarget = null;
+    /* v19：原两个分支结果完全相同（都回主菜单），保留 _backTarget 优先级即可 */
+    showScreen(target || 'scr-start');
+  };
+});
+
+/* ------------------------- 26. 设置 ------------------------- */
+function openSettings(){
+  refreshSaveInfo();
+  showScreen('scr-settings');
+}
+
+/* v21：音乐音量同时作用于试听合成与 8bit BGM（两者共用 AudioEngine.master 总线） */
+$('volMusic').oninput = e => {
+  AudioEngine.init();
+  var v = e.target.value / 100 * 0.8;
+  AudioEngine.volume(v);
+  if(window.Bgm) Bgm.volume = Math.max(0, Math.min(1, e.target.value / 70));
+};
+$('volSfx').oninput = e => { if(window.Sfx) Sfx.volume = e.target.value / 100; };
+
+if($('btnExport')) $('btnExport').onclick = ()=>{
+  const s = localStorage.getItem(SAVE_KEY) || '';
+  const b64 = btoa(unescape(encodeURIComponent(s)));
+  navigator.clipboard?.writeText(b64).then(
+    ()=> toast('存档码已复制到剪贴板'),
+    ()=> modal(`<h3>存档码</h3><p style="word-break:break-all;font-size:11px">${b64}</p><button data-val="ok">关闭</button>`)
+  );
+  if(!navigator.clipboard){
+    modal(`<h3>存档码</h3><p style="word-break:break-all;font-size:11px">${b64}</p><button data-val="ok">关闭</button>`);
+  }
+};
+
+if($('btnImport')) $('btnImport').onclick = ()=>{
+  modal(`
+    <h3>导入存档</h3>
+    <p style="font-size:12px">把存档码粘贴到下方</p>
+    <textarea id="impArea" style="width:100%;height:90px;background:#0a0612;border:1px solid rgba(255,255,255,.2);color:#f2ede4;padding:8px;font-size:11px;font-family:monospace"></textarea>
+    <button data-val="do">导入</button>
+    <button class="ghost" data-val="cancel">取消</button>
+  `).then(v=>{
+    if(v !== 'do') return;
+    const txt = ($('impArea') && $('impArea').value) || '';
+    try{
+      const s = decodeURIComponent(escape(atob(txt.trim())));
+      localStorage.setItem(SAVE_KEY, s);
+      load();
+      refreshSaveInfo();
+      toast('导入成功');
+    }catch(e){ toast('存档码无效'); }
+  });
+};
+
+/* v28：「重新开始（清空存档）」
+   ── 原来错在哪 ──
+   只调了 resetGame()，它把 inventory 清成 []，但：
+     1) 没补初始库存 → 玩家无片可给客人
+     2) 没作废在跑的日循环协程，也没解掉挂起的库存等待 Promise
+     3) 没清屏、没解除暂停 → 屏幕还停在设置页
+   从「暂停菜单 → 设置」走这条路时，玩家以为回到了游戏，
+   实际上游戏卡在 openInventoryForGuest() 的 await 上，彻底无法推进。
+
+   现在改成：清数据 → 补初始库存 → 统一会话复位 → 回主菜单（不自动进局内）。
+   用户明确要求"清除缓存后应该直接重新开始游戏而不是返回游戏"，
+   但直接跳进局内会让玩家莫名其妙被塞进新一天；
+   这里落在主菜单并刷新存档状态，玩家点「开始游戏」即是全新一局。 */
+$('btnReset').onclick = ()=>{
+  modal(`
+    <h3>重新开始</h3>
+    <p>这会清空所有进度、收藏和成就。<br>确定吗？</p>
+    <button data-val="yes">确定清空</button>
+    <button class="ghost" data-val="no">取消</button>
+  `, { bypassPause: true }).then(v=>{
+    if(v !== 'yes') return;
+    /* 1) 清存档数据（含 localStorage），此时 Game.inventory = [] */
+    resetGame();
+    /* 2) 补回初始金币与 6 张初始库存。
+          少了这一步，新局库存为空 → 客人无法交付 → 卡死。 */
+    loadDefaults();
+    /* 3) 统一会话复位：作废旧协程、解掉挂起的等待、清屏、回主菜单 */
+    leaveGameSession();
+    /* 4) 关掉设置页/弹窗残影，落盘一份干净的新档 */
+    save();
+    toast('已重置，点「开始游戏」开新档');
+  });
+};
+
+/* ------------------------- 27. 启动 ------------------------- */
+function boot(){
+  initThree();
+  onResize();
+  load();
+  refreshSaveInfo();
+
+  /* v21：音频解锁。浏览器自动播放策略要求必须有用户手势，
+     所以把解锁放在「点击开始游戏」上，顺带把 BGM 一起起播。 */
+  function unlockAudio(){
+    AudioEngine.init();
+    if(AudioEngine.ctx && AudioEngine.ctx.state === 'suspended') AudioEngine.ctx.resume();
+    if(window.Sfx && Sfx.init) Sfx.init();
+  }
+
+  // 启动页默认显示（其后进入主菜单 / 局内时会自动切 BGM）
+  showScreen('scr-boot');
+  applyBgmForScreen('scr-boot');
+
+  /* v21：点击开始游戏 —— 解锁音频 → 进入主菜单 */
+  var bootBtn = document.getElementById('bootStart');
+  if(bootBtn){
+    bootBtn.addEventListener('click', function(e){
+      e.preventDefault();
+      if(bootBtn._used) return;
+      bootBtn._used = true;
+      unlockAudio();
+      try{ if(window.Sfx) Sfx.click(); }catch(err){}
+      /* 主菜单 BGM 起播（此时已有用户手势，不会被自动播放策略拦下） */
+      try{ if(window.Bgm) Bgm.set('menu'); }catch(err){}
+      showScreen('scr-start');
+    });
+  }
+
+  /* 兜底：任意位置首次点按也解锁音频（避免用户从别处进入时静音） */
+  document.addEventListener('pointerdown', function once(){
+    unlockAudio();
+    document.removeEventListener('pointerdown', once);
+  }, { once:true });
+
+/* PATCH v09 自动加载 */
+(function(){
+  try{
+    var saved = localStorage.getItem('record_shop_save_v04');
+    if(saved){
+      load();
+      console.log('[自动存档] 已恢复 第 ' + Game.day + ' 天');
+    }
+  }catch(e){ console.warn('自动加载失败', e); }
+})();
+}
+
+if(document.readyState === 'complete' || document.readyState === 'interactive'){
+  setTimeout(boot, 0);
+} else {
+  window.addEventListener('DOMContentLoaded', boot);
+}
+
+
+/* === PATCH v06 === */
+/* v19：试听/收藏等按钮的绑定已统一到 bindRecordViewButtons()，此处不再重复绑定。 */
+
+/* 点击水波纹 FX 层（P5 风联动） */
+(function(){
+  var fx = document.getElementById('fx');
+  if(!fx) return;
+  var ctx = fx.getContext('2d');
+  var waves = [];
+  function resize(){ fx.width = window.innerWidth; fx.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  function pickColor(target){
+    if(!target) return '#ff2e88';
+    if(target.closest('#recGive, .draw-btn, .menu-item[data-act="play"], .pl-ctrl button.big')) return '#ff2e88';
+    if(target.closest('#recFlip, .pl-collect, #pauseBtn')) return '#ffd166';
+    if(target.closest('.menu-item, .tbtn, .rbtn, .act-btn')) return '#5fe8ff';
+    return '#c9a0ff';
+  }
+  document.addEventListener('pointerdown', function(e){
+    waves.push({ x: e.clientX, y: e.clientY, t0: performance.now(), color: pickColor(e.target) });
+    if(waves.length > 14) waves.shift();
+  }, true);
+  function loop(){
+    requestAnimationFrame(loop);
+    var now = performance.now();
+    ctx.clearRect(0, 0, fx.width, fx.height);
+    waves = waves.filter(function(w){ return now - w.t0 < 1300; });
+    for(var i = 0; i < waves.length; i++){
+      var w = waves[i];
+      var p = (now - w.t0) / 1300;
+      var alpha = (1 - p) * (1 - p);
+      var maxR = Math.max(fx.width, fx.height) * 0.9;
+      var r = p * maxR;
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.8;
+      ctx.strokeStyle = w.color;
+      ctx.lineWidth = 2 + (1 - p) * 10;
+      ctx.beginPath(); ctx.arc(w.x, w.y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = alpha * 0.45;
+      ctx.lineWidth = 1 + (1 - p) * 4;
+      ctx.beginPath(); ctx.arc(w.x, w.y, r * 0.82, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = alpha * 0.22;
+      ctx.beginPath(); ctx.arc(w.x, w.y, r * 1.15, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+  }
+  loop();
+})();
+
+/* 按钮点击碎片粒子 */
+(function(){
+  function burst(btn){
+    var rect = btn.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var cy = rect.top + rect.height / 2;
+    var fx = document.getElementById('fx');
+    if(!fx) return;
+    var ctx = fx.getContext('2d');
+    var parts = [];
+    for(var i = 0; i < 10; i++){
+      var ang = (i / 10) * Math.PI * 2 + Math.random() * 0.6;
+      var sp = 3 + Math.random() * 3;
+      parts.push({ x: cx, y: cy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp });
+    }
+    var t0 = performance.now();
+    (function anim(){
+      var el = (performance.now() - t0) / 480;
+      if(el >= 1) return;
+      requestAnimationFrame(anim);
+      ctx.save();
+      var a = 1 - el;
+      for(var i = 0; i < parts.length; i++){
+        var pp = parts[i];
+        ctx.globalAlpha = a;
+        ctx.fillStyle = i % 2 ? '#ff2e88' : '#5fe8ff';
+        var xx = pp.x + pp.vx * (1 - a) * 18;
+        var yy = pp.y + pp.vy * (1 - a) * 18;
+        var sz = 2 + (1 - a) * 4;
+        ctx.fillRect(xx - sz/2, yy - sz/2, sz, sz);
+      }
+      ctx.restore();
+    })();
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('.menu-item, .rbtn, .act-btn, .draw-btn, .pl-collect, .tbtn, #pauseBtn, .card');
+    if(b) burst(b);
+  }, true);
+})();
+/* === END PATCH v06 === */
+/* === PATCH v07 交互保险 === */
+/* v19：收藏/试听的绑定已统一到 bindRecordViewButtons()，此处不再重复绑定，
+   避免一次点击触发多次 Player.show() 叠出多条动画循环。 */
+/* === END PATCH v07 === */
+
+/* PATCH v13 暂停控制（v19 修复：兼容脚本作用域内的 Dialogue，原 window.Dialogue 恒为 undefined） */
+(function(){
+  /* 取当前 Dialogue：优先脚本作用域，其次 window */
+  function D(){
+    try{ if(typeof Dialogue !== 'undefined' && Dialogue) return Dialogue; }catch(e){}
+    return window.Dialogue || null;
+  }
+  var pc = {
+    paused: false,
+    promise: null,
+    resolver: null,
+    pause: function(){
+      if(this.paused) return;
+      this.paused = true;
+      var self = this;
+      this.promise = new Promise(function(r){ self.resolver = r; });
+      var d = D();
+      if(d && d.timer){ clearInterval(d.timer); d._timerPaused = true; }
+      var _dlgP = document.getElementById('dlg');
+      if(_dlgP && _dlgP.classList.contains('on')){
+        _dlgP.dataset.wasOn = '1';
+        _dlgP.classList.remove('on');
+      }
+    },
+    resume: function(){
+      if(!this.paused) return;
+      this.paused = false;
+      if(this.resolver){ this.resolver(); }
+      this.promise = null;
+      this.resolver = null;
+      var d = D();
+      if(d && d._timerPaused){
+        d._timerPaused = false;
+        if(d.typing){
+          d.charIdx = d.full.length;
+          d.typing = false;
+          document.getElementById('dlgText').textContent = d.full;
+          document.getElementById('dlgNext').style.opacity = '1';
+        }
+      }
+      var _dlgR = document.getElementById('dlg');
+      if(_dlgR && _dlgR.dataset.wasOn === '1'){
+        /* v21：只有当玩家还在局内时才还原气泡。
+           判据用 Game.abort（「返回主菜单」会置 true，「继续营业」保持 false），
+           不能用"是否还有菜单界面在显示"——resume() 在两个调用点里
+           都排在 showScreen(null) 之前，那一刻 scrub-pause 还亮着。 */
+        var _stillInGame = true;
+        try{ if(typeof Game !== 'undefined' && Game && Game.abort) _stillInGame = false; }catch(e){}
+        if(_stillInGame && d && d.resolve){ _dlgR.classList.add('on'); }
+        else { _dlgR.classList.remove('on'); }
+        _dlgR.dataset.wasOn = '';
+      }
+    }
+  };
+  window._pauseCtrl = pc;
+  console.log('[v13] 暂停控制已加载');
+})();
+
+/* PATCH v19 Sfx 8bit 音效引擎
+   修复：
+   1) 原 v18 用 window.AudioEngine 判断，但 AudioEngine 是脚本作用域 const，
+      不在 window 上 → this.ctx 永远为 null → 全局静音（已实测）。
+      现在直接引用脚本作用域的 AudioEngine。
+   2) speak() 原本固定 0.07s，与文本长度无关。现在整句语音总时长 ∝ 文本长度，
+      并支持传入 (整句文本, 当前字符下标) 形成有语调的逐字电子音。
+*/
+(function(){
+  /* 单个有效字符对应的"音节"基准时长（秒）。文本越长，整句语音越长。 */
+  var SPEAK_PER_CHAR = 0.062;
+  var SPEAK_MIN_TOTAL = 0.09;   /* 最短整句时长 */
+  var SPEAK_MAX_TOTAL = 3.20;   /* 最长整句时长，防止超长文本拖太久 */
+
+  var Sfx = {
+    enabled: true,
+    volume: 0.5,
+    ctx: null,
+    _lastSpeak: 0,
+    _speakQueue: 0,
+
+    /* 取得（必要时创建）音频上下文。直接引用脚本作用域的 AudioEngine。 */
+    init: function(){
+      try{
+        if(window.AudioEngine) window.AudioEngine.init();
+        else if(typeof AudioEngine !== 'undefined') AudioEngine.init();
+      }catch(e){}
+      var c = null;
+      try{
+        c = (typeof AudioEngine !== 'undefined' && AudioEngine.ctx)
+          ? AudioEngine.ctx
+          : (window.AudioEngine && window.AudioEngine.ctx) || null;
+      }catch(e){ c = null; }
+      this.ctx = c;
+      if(c && c.state === 'suspended'){ try{ c.resume(); }catch(e){} }
+      return c;
+    },
+
+    /* 单个 8bit 音。dest 可指定输出节点（默认直连扬声器）。 */
+    _play: function(freq, dur, vol, type, dest){
+      if(!this.enabled || this.volume <= 0) return;
+      var ctx = this.init();
+      if(!ctx) return;
+      try{
+        var t = ctx.currentTime;
+        var o = ctx.createOscillator();
+        var g = ctx.createGain();
+        o.type = type || 'square';
+        o.frequency.setValueAtTime(Math.max(40, freq), t);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(Math.max(0.0001, vol * this.volume), t + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.012, dur));
+        o.connect(g);
+        g.connect(dest || ctx.destination);
+        o.start(t);
+        o.stop(t + Math.max(0.012, dur) + 0.02);
+      }catch(e){}
+    },
+
+    /* ---------- 整句语音时长：与文本长度线性相关 ---------- */
+    speechDuration: function(text){
+      var n = this.effCharCount(text);
+      var total = SPEAK_MIN_TOTAL + n * SPEAK_PER_CHAR;
+      return Math.max(SPEAK_MIN_TOTAL, Math.min(SPEAK_MAX_TOTAL, total));
+    },
+
+    /* 有效字符数（忽略空白与标点，它们不发声） */
+    effCharCount: function(text){
+      var s = String(text == null ? '' : text).replace(/[\s，。！？、；：""''《》（）…—,.!?;:()"']/g, '');
+      return Math.max(1, s.length);
+    },
+
+    /* 逐字说话音。text=整句，idx=当前字符下标（从 1 开始）。 */
+    speak: function(text, idx){
+      if(!this.enabled || this.volume <= 0) return;
+      var now = performance.now();
+      /* 打字机间隔 28ms，节流放到 22ms 以免语音断续 */
+      if(now - this._lastSpeak < 22) return;
+      this._lastSpeak = now;
+
+      var ctx = this.init();
+      if(!ctx) return;
+
+      var n = this.effCharCount(text);
+      var total = this.speechDuration(text);
+      /* 单音节时长：与"每字均摊时长"相关，但压在 26~60ms，
+         让每个音节清晰可辨、连起来又有说话的连续感 */
+      var per = total / n;
+      var dur = Math.max(0.026, Math.min(0.060, per * 0.55));
+
+      var pos = (typeof idx === 'number' && idx > 0) ? Math.min(1, idx / n) : 0;
+      /* 语调：句首偏高、句尾下沉，叠加随机抖动，避免机械重复 */
+      var base = 560 - pos * 190 + (Math.random() * 96 - 48);
+
+      try{
+        var t = ctx.currentTime;
+        var o = ctx.createOscillator();
+        var g = ctx.createGain();
+        o.type = 'square';
+        o.frequency.setValueAtTime(base, t);
+        o.frequency.exponentialRampToValueAtTime(Math.max(60, base * 0.62), t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.26 * this.volume, t + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start(t);
+        o.stop(t + dur + 0.02);
+      }catch(e){}
+    },
+
+    /* 一次说完（点击跳过打字机时用），时长同样与文本长度相关 */
+    speakAll: function(text){
+      if(!this.enabled || this.volume <= 0) return;
+      var ctx = this.init();
+      if(!ctx) return;
+      var n = this.effCharCount(text);
+      var total = Math.min(0.9, this.speechDuration(text) * 0.55);
+      var steps = Math.max(2, Math.min(10, Math.round(n / 3)));
+      var self = this;
+      var stepGap = total / steps * 1000;
+      for(var i = 0; i < steps; i++){
+        (function(k){
+          setTimeout(function(){
+            var pos = k / steps;
+            var base = 560 - pos * 180 + (Math.random() * 80 - 40);
+            self._play(base, Math.max(0.03, total / steps * 0.8), 0.24, 'square');
+          }, Math.round(k * stepGap));
+        })(i);
+      }
+    },
+
+    /* ---------- 界面音效 ---------- */
+    click: function(){
+      var self = this;
+      this._play(880, 0.045, 0.55, 'square');
+      setTimeout(function(){ self._play(1320, 0.030, 0.45, 'square'); }, 18);
+    },
+
+    cancel: function(){
+      var self = this;
+      this._play(400, 0.06, 0.5, 'square');
+      setTimeout(function(){ self._play(280, 0.08, 0.45, 'square'); }, 40);
+    },
+
+    open: function(){
+      var self = this;
+      this._play(660, 0.05, 0.5, 'square');
+      setTimeout(function(){ self._play(990, 0.07, 0.5, 'square'); }, 45);
+    },
+
+    success: function(){
+      var self = this;
+      [523, 659, 784, 1047].forEach(function(f, i){
+        setTimeout(function(){ self._play(f, 0.09, 0.5, 'square'); }, i * 70);
+      });
+    },
+
+    /* 高兴/成交 */
+    coin: function(){
+      var self = this;
+      [1047, 1319, 1568, 2093].forEach(function(f, i){
+        setTimeout(function(){ self._play(f, 0.055, 0.42, 'square'); }, i * 45);
+      });
+    },
+
+    fail: function(){
+      var self = this;
+      this._play(320, 0.12, 0.5, 'square');
+      setTimeout(function(){ self._play(220, 0.18, 0.45, 'square'); }, 90);
+      setTimeout(function(){ self._play(160, 0.22, 0.4, 'square'); }, 200);
+    },
+
+    draw: function(){
+      var self = this;
+      [880, 1046, 1318, 1568].forEach(function(f, i){
+        setTimeout(function(){ self._play(f, 0.06, 0.45, 'square'); }, i * 55);
+      });
+    },
+
+    /* 抽卡逐个翻牌 */
+    flip: function(i){
+      this._play(700 + (i || 0) * 120, 0.05, 0.42, 'square');
+    }
+  };
+  window.Sfx = Sfx;
+
+  /* ---------- 全局按钮点击音效（捕获阶段） ---------- */
+  document.addEventListener('click', function(e){
+    var t = e.target;
+    if(!t || !t.closest) return;
+    /* 优先：危险 / 取消类按钮 */
+    if(t.closest('.ghost, #btnReset, .col-del, #pvCancel')){ Sfx.cancel(); return; }
+    /* 常规可点元素 */
+    if(t.closest('.menu-item, .rbtn, .tbtn, .draw-btn, .pl-collect, .shop-btn, .inv-card, .draw-card, .card, #pauseBtn, .modal-box button, .pl-ctrl button, #seedImport, #pvAdd')){ Sfx.click(); }
+  }, true);
+
+  /* 抽卡：进入抽卡界面播抽卡音，每张翻牌补一个音 */
+  if(typeof window.showDrawScreen === 'function'){
+    var _origDraw = window.showDrawScreen;
+    window.showDrawScreen = function(){
+      try{ Sfx.draw(); }catch(e){}
+      return _origDraw.apply(this, arguments);
+    };
+  }
+
+  /* 键盘 / 无障碍：空格、回车也发声（有按键即有音效） */
+  document.addEventListener('keydown', function(e){
+    if(e.repeat) return;
+    if(e.key === ' ' || e.key === 'Enter' || e.key === 'Escape'){ Sfx.click(); }
+  }, true);
+
+  console.log('[v19] Sfx 8bit 音效引擎已加载 · 说话音长与文本长度相关');
+})();
+
+/* PATCH v21 8bit BGM 引擎
+   三套主题循环，均为纯 WebAudio 方波/三角波实时合成（无外部音频文件）：
+     menu  —— 主界面/暂停菜单（轻快、悠闲）
+     game  —— 局内营业（有推进感）
+     pause —— 暂停（舒缓、低音量）
+   设计要点：
+     1) 复用 Sfx 的 AudioContext，避免多实例。
+     2) 用「调度器 + 前瞻窗口」而非 setTimeout 逐个音符——
+        setTimeout 会被后台节流，导致 BGM 卡顿、错拍。
+     3) 切歌用短交叉淡出，避免咔哒声。
+     4) 音量独立于音效，且受"音乐音量"滑块控制。
+*/
+(function(){
+  /* ---------- 迷你记谱 ----------
+     把 "音高:时值 音高:时值 ..." 展开成引擎用的 [半音偏移, 时值] 数组。
+       · 音高 = 相对 root 的半音数（可为负），r / . / - / x 表示休止
+       · 时值 = 以 16 分音符为单位，省略则默认 4（一个四分音符）
+     之所以加这层，是因为「循环 30 秒以上」意味着谱面要有 200+ 个音符，
+     手搓二元组既不可读也容易把小节长度写错；用字符串写谱，一小节一行，
+     每行时值合计一眼可见（必须等于 16，也就是 4/4 的一小节）。 */
+  const chart = function(lines){
+    const out = [];
+    lines.join(' ').trim().split(/\s+/).forEach(function(tok){
+      if(!tok) return;
+      const p = tok.split(':');
+      const k = p[0].trim();
+      const d = p.length > 1 ? parseFloat(p[1]) : 4;
+      /* 纯整数（含负数，如 -12 = root 低一个八度）才是音高；
+         r / . / x / - 之类一律当休止 */
+      const isNum = /^-?\d+$/.test(k);
+      out.push([ isNum ? parseInt(k, 10) : null,
+                 (isNaN(d) || d <= 0) ? 4 : d ]);
+    });
+    return out;
+  };
+
+  /* ---------- 音色预设（_note 的第 7 个参数 fx） ----------
+     detune  第二振荡器失谐(cents) —— 两把轻微跑调的振荡器 → 缓慢拍频
+     vib/vibRate  颤音深度(cents) / 速率(Hz)
+     lp / sweep / q  低通基准(Hz) / 音符内截止扫描倍率(>1 变亮 <1 变暗) / Q 值
+     hold    音量保持到音符时长的百分之几才开始释放（旧版固定 0.62）
+     不传 fx 时 _note 行为与旧版逐字节一致，因此 menu / pause 完全不受影响。 */
+
+  /* 局内「太空爵士」主音：
+     旧版是 detune 7 + lp 1400(→2520) + q 4 的迷幻配置，实际听感是
+     "闷、飘、抖"三件事叠加 —— 玩家反馈"太冷清，听着人会抑郁"。逐条对治：
+       · detune 7 → 5：拍频周期从 ~0.5s 拉到 ~0.7s，抖动弱化成一圈
+         若有若无的合唱（电钢琴/Rhodes 那种暖），不再是走音的迷幻感。
+       · lp 1400 → 2600：这是最关键的一条。1400Hz 把泛音砍掉了大半，
+         声音像隔着一层水；2600Hz 让铜管/电钢的光泽透出来，"积极"起来的
+         主要来源正是高频泛音。
+       · q 4 → 1.2：取消截止点上的共振峰，去掉那股鼻音似的"嗡嗡"。
+       · sweep 1.8 → 1.35：保留一点"呼吸"，但不再是夸张的哇音。
+       · hold 0.74 → 0.68：音符头稍微立起来一点，爵士需要清晰的咬字。 */
+  const FX_LEAD = { detune: 5, vib: 4, vibRate: 5.2, lp: 2600, sweep: 1.35, q: 1.2, hold: 0.68 };
+
+  /* 局内低音：走干净的单振荡器（detune 0）+ 抬高截止。
+     旧的 lp 400 把低音闷成一团，人声扬声器上几乎只剩"轰"；
+     900Hz 才能听出音高，walking bass 的走动感才立得住。
+     注意 detune 为 0 时 _note 不会乘 0.62 的削波补偿，
+     所以 bassVol 必须相应用 0.62 倍配平，否则低音会突然抢戏。 */
+  const FX_BASS = { detune: 0, vib: 0, vibRate: 0, lp: 900, sweep: 1.1, q: 1, hold: 0.72 };
+
+  /* ---------- 三套主题 ----------
+     step: 半音偏移（相对 root），rest 表示休止
+     dur : 以 16 分音符为单位的时值
+     fx  : 可选，附加音色处理（见上方预设）
+  */
+  const THEMES = {
+    /* 主界面：C 大调，悠闲的 3/4 感，明快 */
+    menu: {
+      bpm: 104,
+      root: 60,                 /* C4 */
+      wave: 'square',
+      vol: 0.085,
+      bassWave: 'triangle',
+      bassVol: 0.10,
+      lead: [
+        [0,2],[4,2],[7,2],[12,2],[11,2],[7,2],
+        [5,2],[9,2],[12,2],[9,2],[7,2],[5,2],
+        [4,2],[7,2],[11,2],[9,2],[7,2],[4,2],
+        [2,2],[5,2],[9,2],[7,2],[4,4],
+        [0,2],[4,2],[7,2],[5,2],[4,2],[2,2],
+        [0,4]
+      ],
+      bass: [
+        [0-12,4],[7-12,2],[0-12,4],[7-12,2],
+        [5-12,4],[12-12,2],[5-12,4],[12-12,2],
+        [9-12,4],[4-12,2],[9-12,4],[2-12,2],
+        [7-12,4],[2-12,2],[7-12,6],
+        [0-12,4],[7-12,2],[0-12,4],[7-12,2],
+        [0-12,6]
+      ]
+    },
+    /* 局内营业：A 太空爵士（Space Jazz / Lounge）
+       ── 为什么要换 ──
+       上一版是「电子迷幻」：bpm 76、几乎全是长音与留白、音色闷在 1400Hz 低通里。
+       技术上达标（37.9s 循环），但听感偏冷、偏空 —— 玩家原话
+       "太冷清了，听着人会抑郁"。
+
+       ── 新方案怎么"暖"起来 ──
+       目标是"不那么吵闹、能静心游玩，但带一点热情 / 太空爵士的质感"。
+       太空爵士的底色其实是 lounge / exotica：松弛、有律动、和弦色彩丰富。
+       所以主要动了三件事：
+         1) bpm 76 → 88。不是变吵，而是让低声部能"走动"起来。
+            76bpm 下走二拍贝斯会拖；88bpm 才是 relaxed swing 的舒适区。
+         2) 低音从"根音长音"改成 walking bass（每拍换音、级进为主）。
+            这是爵士的引擎 —— 有了走动感，音乐立刻"活"了，
+            而且因为每音都短，整体反而更安静，不会糊成一团。
+         3) 和声从单纯三和弦换成带色彩音的扩展和弦：
+            Am9 / Dm9 / Fmaj7(9) / Em11 / G13 …
+            九音、十一音、十三音是"热情"和"太空感"的具体来源；
+            只有三和弦永远是朴素的，只有七和弦是"忧郁"的，
+            加了九/十三音才有那种慵懒又明亮的 lounge 味。
+
+       ── 结构（12 小节，A 多利亚调式，4/4）──
+         和弦进行：Am9 → Dm9 → Fmaj7 → Em11 → Am9 → Dm9 → G13 → Cmaj7
+                  → Fmaj7 → Dm9 → Em11 → Am9
+         右手旋律：以 4 分 / 8 分为主，句尾留长音，句间有呼吸
+         左手贝斯：每拍一个音，级进 + 偶尔跳进（爵士的标准走法）
+
+       12 小节 × 16 个 16 分音符 = 192
+       88bpm 下：192 × (60/88/4) ≈ 32.7s，满足 >30s 的硬要求 */
+    game: {
+      bpm: 88,
+      root: 57,                 /* A3 —— 与旧版同音区，改动集中在织体与和声上 */
+      wave: 'triangle',
+      vol: 0.122,               /* 离线渲染实测：旧版 RMS -22.3dB，
+                                   首版新曲只有 -25.7dB（-3.4dB 偏轻）。
+                                   ×1.39 把响度拉回与旧版相当，另留 12dB 峰值余量 */
+      bassWave: 'triangle',
+      bassVol: 0.095,           /* FX_BASS.detune=0 无 0.62 削波补偿；
+                                   walking bass 密度是旧版 2 倍但每音更短，
+                                   故单独配平到与主音同级的响度 */
+      legato: 1.14,             /* 主音略叠接：乐句之间不留缝 */
+      legatoBass: 0.92,         /* 贝斯不叠接 —— walking bass 必须一音一断 */
+      fxLead: FX_LEAD,
+      fxBass: FX_BASS,
+      /* 12 小节 × 16 个 16 分音符 = 192 → 88bpm 下约 32.7s（>30s 的硬要求）
+         主音音区 7~29（D4~D6），低音音区 -12~-2（A2~G3）：
+         两者隔了一个八度以上，互不遮挡，也都在普通扬声器的有效频段内。
+         全曲用满 14 种音高、53 个音符 —— 音高种类少就成了"念经"，
+         这是上一版"同质化"的根因之一。
+         旋律写成 4 小节一个乐句、共 3 句，每句都在第 4 小节留长音呼吸。 */
+      lead: chart([
+        /* 1  Am9     上行琶音开场：A C E G A */
+        '12:3 14:3 17:2 19:3 21:3 24:2',
+        /* 2  Dm9     冲上 B6 再回落（高位挂留 → 太空感） */
+        '24:2 27:2 26:3 22:3 19:3 17:3',
+        /* 3  Fmaj7   C E G 三音铺开，收在 D6（13音） */
+        '15:3 19:3 22:2 26:4 24:4',
+        /* 4  Em11    只留四个音，句尾长音呼吸 */
+        '24:4 21:3 19:3 17:6',
+        /* 5  Am9     第二句：从低八度起，一路推到 D6（全曲最高点） */
+        '12:3 15:3 19:2 24:3 27:3 29:2',
+        /* 6  Dm9     高位回旋，逐级下行 */
+        '26:3 24:3 22:4 19:3 17:3',
+        /* 7  G13     突然俯冲到 G4/F#4 —— 大跳是爵士的招牌动作，
+                      也顺手把全曲音域拉开；末尾回到 E5 悬挂 */
+        '7:3 9:3 10:2 14:3 17:5',
+        /* 8  Cmaj7   明亮收束，落 C5-E5-G5-A5 */
+        '15:4 19:3 22:3 24:6',
+        /* 9  Fmaj7   第三句：C E G 起手，开阔通透 */
+        '15:3 17:3 19:2 22:4 26:4',
+        /* 10 Dm9     高位回响，下行收拢 */
+        '24:3 26:3 24:4 21:3 19:3',
+        /* 11 Em11    半终止：9音(F#) 与 11音(A)，悬在半空不解决 */
+        '19:4 21:4 24:8',
+        /* 12 Am9     落回主音，长音把气口留给下一轮 */
+        '22:2 19:2 15:3 12:9'
+      ]),
+      /* walking bass：每拍一个音、以级进为主、偶尔跳进 —— 爵士的发动机。
+         v28 修正：初版这条线写"飞"了 —— 实测级进只占 33.3%（若按音阶级数误读更低），
+         最大跳进 10 个半音，低音会跟主音打架、也听不出"走"的感觉。
+         重写为二度级进为主、跳进不超过大三度，每 4 小节换一次行进方向。
+         实测：音数 46、级进 88.9%、最大跳进 4 个半音、7 个音级全用到、
+         音域 110~196Hz（贝斯基频最饱满的区间）。 */
+      bass: chart([
+        /* 1  Am9   上行进入 */
+        '-12:4 -10:4 -7:4 -5:4',
+        /* 2  Dm9   继续爬升到 9 音(B) */
+        '-7:4 -5:4 -3:4 -2:4',
+        /* 3  Fmaj7 折返，落在三音(A) */
+        '-3:4 -2:4 -5:4 -3:4',
+        /* 4  Em11  下行收束到 11 音(A) */
+        '-5:4 -7:4 -9:4 -10:4',
+        /* 5  Am9   第二句：重复上行主题 */
+        '-12:4 -10:4 -7:4 -5:4',
+        /* 6  Dm9   同上行 */
+        '-7:4 -5:4 -3:4 -2:4',
+        /* 7  G13   从属和弦高位下行 */
+        '-2:4 -3:4 -5:4 -7:4',
+        /* 8  Cmaj7 落到三音(E)，明亮 */
+        '-9:4 -5:4 -3:4 -5:4',
+        /* 9  Fmaj7 第三句：低起，缓步上行 */
+        '-3:4 -5:4 -7:4 -5:4',
+        /* 10 Dm9   再上行一次 */
+        '-7:4 -5:4 -3:4 -2:4',
+        /* 11 Em11  半终止，回落到 11 音悬停 */
+        '-5:4 -7:4 -9:4 -10:4',
+        /* 12 Am9   主音长音，给下一轮留气口 */
+        '-12:8 -12:8'
+      ])
+    },
+    /* 暂停：F 大调，缓慢舒展，音量更低
+       暂停时音乐本就该绵长不断，而 6 拍的音配合默认 0.86 会留下 ~100ms 空档，
+       所以这里也给一点叠接（比局内克制，避免和"暂停"的静止感冲突）。 */
+    pause: {
+      bpm: 72,
+      root: 65,                 /* F4 */
+      wave: 'triangle',
+      vol: 0.070,
+      bassWave: 'sine',
+      bassVol: 0.075,
+      legato: 1.1,
+      legatoBass: 1.04,
+      lead: [
+        [0,4],[4,2],[7,2],[5,4],[4,2],[2,2],
+        [0,4],[7,2],[5,2],[4,6],
+        [5,4],[9,2],[12,2],[11,4],[9,2],[7,2],
+        [5,4],[4,2],[2,2],[0,8]
+      ],
+      bass: [
+        [0-12,6],[7-12,2],
+        [5-12,6],[12-12,2],
+        [9-12,6],[4-12,2],
+        [7-12,6],[0-12,2]
+      ]
+    }
+  };
+
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+
+  const Bgm = {
+    key: null,          /* 当前曲目 key */
+    enabled: true,
+    volume: 1.0,        /* 内部配平；最终音量由"音乐音量"滑块（AudioEngine.master）统一控制 */
+    ctx: null,
+    master: null,
+    out: null,          /* 当前曲目总线（便于单独淡出） */
+    _bus: null,
+    _timer: null,
+    _nextLead: 0,       /* 旋律声部下一个音符的绝对时间 */
+    _nextBass: 0,       /* 低音声部下一个音符的绝对时间 */
+    _li: 0, _bi: 0,     /* lead / bass 游标 */
+    _pendingKey: null,
+    THEMES: THEMES,     /* 只读引用，便于控制台调参 / 自检 */
+
+    init: function(){
+      if(this.ctx) return this.ctx;
+      var c = null;
+      try{
+        if(typeof AudioEngine !== 'undefined' && AudioEngine){
+          AudioEngine.init();
+          c = AudioEngine.ctx;
+        }
+      }catch(e){ c = null; }
+      if(!c) return null;
+      this.ctx = c;
+      if(c.state === 'suspended'){ try{ c.resume(); }catch(e){} }
+      return c;
+    },
+
+    /* 输出总线：优先复用 AudioEngine.master（这样"音乐音量"滑块能同时管 BGM 与试听） */
+    bus: function(){
+      try{
+        if(typeof AudioEngine !== 'undefined' && AudioEngine && AudioEngine.master) return AudioEngine.master;
+      }catch(e){}
+      if(!this._bus && this.ctx){
+        this._bus = this.ctx.createGain();
+        this._bus.gain.value = 0.55;
+        this._bus.connect(this.ctx.destination);
+      }
+      return this._bus || (this.ctx && this.ctx.destination);
+    },
+
+    /* 计算某主题一"轮"的总时长（秒），用于循环 */
+    loopLen: function(th){
+      const spb = 60 / th.bpm / 4;   /* 一个 16 分音符 */
+      const sum = arr => arr.reduce((a, x) => a + x[1], 0);
+      return Math.max(sum(th.lead), sum(th.bass)) * spb;
+    },
+
+    /* 对外查询某主题一轮多少秒（自检 / 调参用） */
+    loopSec: function(key){
+      const th = THEMES[key];
+      return th ? this.loopLen(th) : 0;
+    },
+
+    /* 在指定时刻播放一个音符
+       fx（可选，缺省时走与旧版完全一致的单振荡器路径）：
+         detune        第二振荡器失谐(cents) → 两把轻微跑调的振荡器 = 缓慢拍频
+         vib/vibRate   颤音深度(cents) / 速率(Hz)
+         lp/sweep/q    低通截止基准(Hz) / 音符内扫描倍率 / Q
+         hold          音量保持比例（旧版固定 0.62） */
+    _note: function(freq, t, dur, vol, wave, dest, fx){
+      const ctx = this.ctx;
+      if(!ctx) return;
+      try{
+        const f = Math.max(40, freq);
+        const oscs = [];
+        /* 双振荡器叠加时峰值会翻倍，先压一点电平避免削波 */
+        const amp = (fx && fx.detune) ? vol * 0.62 : vol;
+
+        /* --- 音量包络 --- */
+        const g = ctx.createGain();
+        const hold = (fx && fx.hold) || 0.62;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(amp, t + 0.012);
+        g.gain.setValueAtTime(amp, t + dur * hold);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+        /* --- 低通：迷幻音色的主要来源（音符内缓慢开合 = 呼吸感） --- */
+        let tail = g;
+        if(fx && fx.lp){
+          const bp = ctx.createBiquadFilter();
+          bp.type = 'lowpass';
+          try{ bp.Q.setValueAtTime(fx.q || 1, t); }catch(e){}
+          const clamp = v => Math.max(120, Math.min(20000, v));
+          bp.frequency.setValueAtTime(clamp(fx.lp), t);
+          bp.frequency.linearRampToValueAtTime(clamp(fx.lp * (fx.sweep || 1)), t + dur * 0.85);
+          g.connect(bp); tail = bp;
+        }
+        tail.connect(dest);
+
+        /* --- 振荡器：失谐时开两把，各自 +det / -det --- */
+        const stopAt = t + dur + 0.03;
+        const mk = function(det){
+          const o = ctx.createOscillator();
+          o.type = wave;
+          o.frequency.setValueAtTime(f, t);
+          if(det){ try{ o.detune.setValueAtTime(det, t); }catch(e){} }
+          o.connect(g);
+          o.start(t); o.stop(stopAt);
+          oscs.push(o);
+        };
+        mk(fx && fx.detune ? fx.detune : 0);
+        if(fx && fx.detune) mk(-fx.detune);
+
+        /* --- 颤音：一条 LFO 同时驱动所有振荡器的 detune --- */
+        if(fx && fx.vib){
+          const lfo = ctx.createOscillator(), lg = ctx.createGain();
+          lfo.type = 'sine';
+          lfo.frequency.setValueAtTime(fx.vibRate || 4, t);
+          lg.gain.setValueAtTime(fx.vib, t);
+          lfo.connect(lg);
+          for(let i = 0; i < oscs.length; i++){
+            try{ lg.connect(oscs[i].detune); }catch(e){}
+          }
+          lfo.start(t); lfo.stop(stopAt);
+        }
+      }catch(e){}
+    },
+
+    /* 前瞻调度：每次把未来 SCHEDULE_AHEAD 秒内的音符全部排好。
+       lead / bass 各用独立时间游标，避免两者长度不等时错位。 */
+    _tick: function(){
+      const ctx = this.ctx, th = THEMES[this.key];
+      if(!ctx || !th || !this.out) return;
+      /* 上下文还没被用户手势解锁时不要预排音符：
+         suspended 状态下 currentTime 不走，预排的音符会在恢复瞬间抢跑，
+         并且会让时间轴漂移。这里持续把游标对齐到"现在"。 */
+      if(ctx.state !== 'running'){
+        this._nextLead = ctx.currentTime + 0.12;
+        this._nextBass = ctx.currentTime + 0.12;
+        return;
+      }
+      const spb = 60 / th.bpm / 4;      /* 一个 16 分音符的秒数 */
+      const AHEAD = 0.4;
+      const now = ctx.currentTime;
+      /* 长时间切后台后游标会落在过去 → 直接对齐，避免补排一大堆过期音符 */
+      if(this._nextLead < now - 0.5 || this._nextBass < now - 0.5){
+        this._nextLead = now + 0.12;
+        this._nextBass = now + 0.12;
+      }
+      const horizon = now + AHEAD;
+
+      /* 旋律声部 */
+      let guard = 0;
+      while(this._nextLead < horizon && guard++ < 256){
+        const L = th.lead[this._li % th.lead.length];
+        this._li++;
+        if(!L){ this._nextLead += spb; continue; }   /* 空槽也要推进时间，否则死循环 */
+          const d = L[1] * spb;
+          if(L[0] !== null){
+            /* 默认 0.86 留 14% 静音；主题可用 legato 覆盖成 >1 做音垫叠接 */
+            const lg = th.legato || 0.86;
+            this._note(mtof(th.root + L[0]), this._nextLead, d * lg,
+                       th.vol * this.volume, th.wave, this.out, th.fxLead);
+          }
+        this._nextLead += d;
+      }
+
+      /* 低音声部 */
+      guard = 0;
+      while(this._nextBass < horizon && guard++ < 256){
+        const B = th.bass[this._bi % th.bass.length];
+        this._bi++;
+        if(!B){ this._nextBass += spb; continue; }
+          const d = B[1] * spb;
+          if(B[0] !== null){
+            const lg = th.legatoBass || 0.9;
+            this._note(mtof(th.root + B[0]), this._nextBass, d * lg,
+                       th.bassVol * this.volume, th.bassWave, this.out, th.fxBass);
+          }
+        this._nextBass += d;
+      }
+    },
+
+    set: function(key, force){
+      key = key || 'game';
+      /* 'none' = 暂不出声（试听唱片时让位给唱片本身），但仍记住这个状态 */
+      if(key === 'none'){
+        if(this.key === 'none') return;
+        this.key = 'none';
+        this._pendingKey = null;
+        this._stopTimer();
+        this._fadeOut(0.25);
+        return;
+      }
+      if(!THEMES[key]) key = 'game';
+      /* 同一首且在播 → 什么都不做（避免反复打断）。force=true 时强制重起 */
+      if(!force && this.key === key && this._timer) return;
+      if(!this.enabled){ this._pendingKey = key; return; }
+      this.key = key;
+      this._pendingKey = null;
+      this._restart();
+    },
+
+    _restart: function(){
+      const ctx = this.init();
+      if(!ctx) return;
+      if(ctx.state === 'suspended'){ try{ ctx.resume(); }catch(e){} }
+      this._stopTimer();
+      this._fadeOut(0.18);
+      /* 新建曲目总线，做 0 → 1 的淡入；音量由常驻 bus 统一控制 */
+      const out = ctx.createGain();
+      out.gain.value = 0;
+      out.connect(this.bus());
+      const target = 1;
+      try{
+        const t = ctx.currentTime;
+        out.gain.cancelScheduledValues(t);
+        out.gain.setValueAtTime(0.0001, t);
+        out.gain.linearRampToValueAtTime(target, t + 0.35);
+      }catch(e){}
+      this.out = out;
+      this._li = 0; this._bi = 0;
+      this._nextLead = ctx.currentTime + 0.12;
+      this._nextBass = ctx.currentTime + 0.12;
+      const self = this;
+      this._timer = setInterval(function(){ self._tick(); }, 120);
+      this._tick();
+    },
+
+    _fadeOut: function(sec){
+      const ctx = this.ctx, old = this.out;
+      if(!ctx || !old) return;
+      this.out = null;
+      try{
+        const t = ctx.currentTime;
+        old.gain.cancelScheduledValues(t);
+        old.gain.setValueAtTime(Math.max(0.0001, old.gain.value), t);
+        old.gain.exponentialRampToValueAtTime(0.0001, t + sec);
+        setTimeout(function(){ try{ old.disconnect(); }catch(e){} }, (sec + 0.15) * 1000);
+      }catch(e){}
+    },
+
+    _stopTimer: function(){ if(this._timer){ clearInterval(this._timer); this._timer = null; } },
+
+    stop: function(){ this._stopTimer(); this._fadeOut(0.2); this.key = null; },
+
+    pauseApp: function(){ this._stopTimer(); this._fadeOut(0.15); },
+
+    resumeApp: function(){ if(this.key && this.key !== 'none' && this.enabled) this._restart(); else if(this._pendingKey) this.set(this._pendingKey); }
+  };
+  window.Bgm = Bgm;
+  /* v28：把音频引擎也挂到 window 上。
+     原因：顶层 const 不会成为 window 的属性（只有 var/function 会），
+     导致外部工具/测试无法离线复用真实的合成与发音代码路径 —— 只能靠复制一份，
+     而复制出来的副本会随源码改动悄悄失配。挂上引用后可以永远走真实代码。
+     （typeof 守卫是为了让只截取本 IIFE 的静态分析脚本也能跑通。） */
+  if(typeof AudioEngine !== 'undefined') window.AudioEngine = AudioEngine;
+
+  /* 切到后台标签页时停掉 BGM，回来再续上（省电，也避免后台节流导致错拍） */
+  document.addEventListener('visibilitychange', function(){
+    try{
+      if(document.hidden) Bgm.pauseApp();
+      else Bgm.resumeApp();
+    }catch(e){}
+  });
+
+  console.log('[v21] 8bit BGM 引擎已加载（menu / game / pause）');
+})();
+</script>
+</body>
+</html>
