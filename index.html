@@ -334,6 +334,135 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 #scr-rec.on .rbtn:nth-child(2){animation-delay:.12s}
 #scr-rec.on .rbtn:nth-child(3){animation-delay:.19s}
 /* END PATCH v06 UI */
+
+/* === PATCH v30 UI === */
+/* ── 防连点误触 ──
+   做法：界面/弹窗刚出现的一小段时间内，把所有"可点区域"整体加上
+   pointer-events:none。
+   为什么不用"在事件监听器里判时间窗"：本文件里 document 捕获阶段的
+   监听器很多（对话推进、音效、手势层…），谁先收到事件取决于注册顺序，
+   顺序稍有变化防护就会失效；而 pointer-events 是渲染层的行为，
+   命中的那一刻元素根本不参与，任何注册顺序都拦得住。
+   锁的时间很短（160~260ms），且只在"刚切屏/刚弹窗"时加，不常驻，
+   所以不会给正常操作带来阻塞感。 */
+.input-lock{pointer-events:none!important;}
+
+/* ── 结算页弹出特效 ── */
+#scr-report{overflow:hidden}
+.rep-sweep{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
+.rep-sweep i{position:absolute;top:-25%;left:0;width:30%;height:150%;display:block;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent)}
+#scr-report.on .rep-sweep i{animation:repSweep .9s cubic-bezier(.3,.85,.3,1) .2s both}
+@keyframes repSweep{0%{transform:translateX(-140%) skewX(-18deg);opacity:0}
+  30%{opacity:.95}100%{transform:translateX(360%) skewX(-18deg);opacity:0}}
+#scr-report.on .rep-head{animation:repHeadIn .48s cubic-bezier(.2,1.3,.35,1) both}
+@keyframes repHeadIn{0%{opacity:0;transform:translateY(-22px) skewX(-6deg)}
+  100%{opacity:1;transform:translateY(0) skewX(0)}}
+#scr-report.on .rep-num{animation:repNumIn .68s cubic-bezier(.2,1.55,.4,1) .14s both}
+@keyframes repNumIn{0%{opacity:0;transform:scale(.36) rotate(-7deg);filter:blur(7px)}
+  62%{opacity:1;transform:scale(1.13) rotate(2deg);filter:blur(0)}
+  100%{opacity:1;transform:scale(1) rotate(0)}}
+#scr-report.on .rep-lbl{animation:repRowIn .4s ease-out .34s both}
+#scr-report.on .rep-anim{animation:repRowIn .45s ease-out both}
+@keyframes repRowIn{0%{opacity:0;transform:translateX(-26px)}100%{opacity:1;transform:translateX(0)}}
+#scr-report.on .rep-pop{animation:repPopIn .5s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes repPopIn{0%{opacity:0;transform:translateY(26px) scale(.86)}
+  100%{opacity:1;transform:translateY(0) scale(1)}}
+#scr-report.on .rep-perfect{animation:repPerfect 1.5s ease-out .45s both}
+@keyframes repPerfect{0%{opacity:0;transform:scale(.5)}22%{opacity:1;transform:scale(1.08)}
+  40%{transform:scale(1)}100%{opacity:.92;transform:scale(1)}}
+.rep-burst{position:absolute;left:50%;top:132px;width:340px;height:340px;margin-left:-170px;
+  border-radius:50%;pointer-events:none;z-index:1;opacity:0;
+  background:radial-gradient(circle,rgba(255,209,102,.5),rgba(255,209,102,.12) 44%,transparent 68%)}
+#scr-report.on .rep-burst{animation:repBurst 1.15s ease-out .12s both}
+@keyframes repBurst{0%{opacity:0;transform:scale(.3)}35%{opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.5)}}
+
+/* ── 新手教程：教练条 / 指示环 / 需求面板 ── */
+#coach{position:fixed;left:0;right:0;top:0;z-index:44;display:none;pointer-events:none;
+  padding:calc(10px + env(safe-area-inset-top)) 10px 0}
+#coach.on{display:block}
+.coach-box{pointer-events:auto;position:relative;display:flex;align-items:flex-start;gap:11px;
+  background:linear-gradient(100deg,rgba(255,209,102,.97),rgba(255,163,64,.97));
+  color:#2a1a00;border-left:5px solid #a1004f;padding:11px 12px 11px 15px;
+  box-shadow:0 10px 34px rgba(0,0,0,.55);transform:skewX(-2deg);
+  animation:coachIn .3s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes coachIn{0%{opacity:0;transform:skewX(-2deg) translateY(-28px)}100%{opacity:1;transform:skewX(-2deg)}}
+.coach-box>*{transform:skewX(2deg)}
+.coach-ic{font-size:19px;line-height:1.25;flex-shrink:0}
+.coach-tx{flex:1;font-size:13.5px;font-weight:800;line-height:1.6;letter-spacing:.02em}
+.coach-tx small{display:block;font-weight:700;font-size:10.5px;opacity:.7;margin-top:4px;letter-spacing:.07em}
+.coach-skip{border:none;background:rgba(42,26,0,.15);color:#2a1a00;font-family:inherit;font-weight:900;
+  font-size:10.5px;letter-spacing:.14em;padding:9px 11px;min-width:54px;flex-shrink:0;cursor:pointer}
+.coach-skip:active{background:rgba(42,26,0,.32)}
+.coach-dots{display:flex;gap:5px;justify-content:center;margin-top:7px;pointer-events:none}
+.coach-dots i{width:15px;height:3px;background:rgba(255,255,255,.24);display:block}
+.coach-dots i.done{background:var(--gold)}
+.coach-dots i.cur{background:var(--magenta);box-shadow:0 0 8px var(--magenta)}
+.coach-hi{position:fixed;z-index:43;pointer-events:none;border:3px solid var(--gold);display:none;
+  box-shadow:0 0 0 3px rgba(255,209,102,.22),0 0 26px rgba(255,209,102,.7)}
+.coach-hi.on{display:block;animation:coachPulse 1.15s ease-in-out infinite}
+@keyframes coachPulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.04)}}
+
+/* 教程用「客人需求」面板：只在新手教程里出现，
+   真实营业时需求仍然要靠听对话（这是设计，不是缺失）。 */
+#tutDemand{position:fixed;z-index:24;right:10px;top:calc(66px + env(safe-area-inset-top));display:none;
+  background:rgba(10,6,18,.92);border:1px solid rgba(255,209,102,.55);border-right:4px solid var(--gold);
+  padding:10px 13px;min-width:150px;transform:skewX(-2deg);box-shadow:0 6px 26px rgba(0,0,0,.55)}
+#tutDemand.on{display:block;animation:coachIn .3s cubic-bezier(.2,1.4,.4,1) both}
+#tutDemand .td-t{font-size:10px;letter-spacing:.24em;color:var(--gold);font-weight:900;margin-bottom:7px}
+#tutDemand .td-r{font-size:12px;font-weight:800;margin-top:6px;color:var(--bone);line-height:1.4}
+#tutDemand .td-r span{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.12em;margin-right:5px}
+
+/* ── 金边唱片（CD 建模 + 列表角标） ── */
+.inv-card.gold{border-left-color:var(--gold)!important;
+  box-shadow:0 0 0 1px rgba(255,209,102,.35),0 2px 20px rgba(255,209,102,.28)!important}
+.inv-thumb .gbadge{position:absolute;left:2px;bottom:2px;font-size:8.5px;font-weight:900;letter-spacing:.06em;
+  background:linear-gradient(100deg,#fff2c8,#ffd166);color:#3a2408;padding:1px 5px}
+.draw-glow.rg{background:radial-gradient(circle,rgba(255,209,102,.75),transparent 68%);
+  animation:drawGlow 1.3s ease-in-out infinite}
+
+/* ── 店铺管理：装潢主题卡 + 护符卡 ── */
+.theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.theme-card{position:relative;padding:11px 12px 13px;
+  background:linear-gradient(150deg,rgba(255,255,255,.05),rgba(26,13,46,.95));
+  border:1px solid rgba(255,255,255,.1);border-left:3px solid var(--cyan)}
+.theme-card.own{border-left-color:var(--gold)}
+.theme-card.cur{border-color:var(--gold);box-shadow:0 0 20px rgba(255,209,102,.32)}
+.theme-sw{height:32px;display:flex;gap:3px;margin-bottom:9px;border:1px solid rgba(255,255,255,.1)}
+.theme-sw i{flex:1;display:block}
+.theme-nm{font-size:13.5px;font-weight:900;letter-spacing:.04em}
+.theme-mt{font-size:10.5px;color:var(--gold);font-weight:800;margin-top:5px;letter-spacing:.08em}
+.theme-btn{width:100%;margin-top:9px;height:34px;border:none;font-family:inherit;font-size:11.5px;font-weight:900;
+  letter-spacing:.12em;background:var(--cyan);color:#06222c;transform:skewX(-6deg)}
+.theme-btn.gd{background:var(--gold);color:#2a1a00}
+.theme-btn:disabled{opacity:.42}
+.theme-btn:active{transform:skewX(-6deg) scale(.95)}
+.theme-card .tag-cur{position:absolute;top:-8px;right:8px;background:var(--gold);color:#2a1a00;font-size:9.5px;
+  font-weight:900;letter-spacing:.1em;padding:2px 8px;transform:skewX(-10deg)}
+.tal-list{display:flex;flex-direction:column;gap:10px}
+.tal-card{display:flex;gap:12px;align-items:center;padding:12px 13px;
+  background:linear-gradient(100deg,rgba(255,255,255,.045),rgba(26,13,46,.94));
+  border-left:4px solid var(--cyan);transform:skewX(-1.2deg)}
+.tal-card>*{transform:skewX(1.2deg)}
+.tal-card.bl{border-left-color:#5fe8ff}
+.tal-card.yl{border-left-color:#ffd166}
+.tal-card.gr{border-left-color:#7cf5a0}
+.tal-orb{width:32px;height:32px;border-radius:50%;flex-shrink:0;
+  box-shadow:inset 0 -4px 10px rgba(0,0,0,.45),0 0 16px rgba(255,255,255,.18)}
+.tal-orb.bl{background:radial-gradient(circle at 34% 28%,#d8f8ff,#3fc8ff 55%,#0a6a9a)}
+.tal-orb.yl{background:radial-gradient(circle at 34% 28%,#fff4cc,#ffd166 55%,#a07400)}
+.tal-orb.gr{background:radial-gradient(circle at 34% 28%,#dcffe8,#65e88c 55%,#12a04a)}
+.tal-info{flex:1;min-width:0}
+.tal-nm{font-size:14px;font-weight:900;letter-spacing:.05em}
+.tal-ds{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.55;letter-spacing:.05em}
+.tal-btn{padding:10px 14px;border:none;font-family:inherit;font-weight:900;font-size:11.5px;letter-spacing:.1em;
+  background:var(--gold);color:#2a1a00;transform:skewX(-6deg);white-space:nowrap}
+.tal-btn:disabled{opacity:.4}
+.tal-btn:active{transform:skewX(-6deg) scale(.95)}
+.tal-card.own{border-left-color:rgba(255,255,255,.2)}
+.tal-card.own .tal-btn{background:rgba(255,255,255,.13);color:var(--bone)}
+/* === END PATCH v30 UI === */
 </style>
 </head>
 <body>
@@ -385,7 +514,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   </div>
   <div class="menu-wrap">
     <button class="menu-item" data-act="resume"><span class="idx">▶</span><span class="tx">继续营业</span></button>
-    <button class="menu-item cy" data-act="collection"><span class="idx">💿</span><span class="tx">收藏</span></button>
     <button class="menu-item cy" data-act="settings"><span class="idx">⚙</span><span class="tx">设置</span></button>
     <button class="menu-item gd" data-act="home"><span class="idx">🏠</span><span class="tx">返回主菜单</span></button>
   </div>
@@ -472,7 +600,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
       · 游戏自动保存，无需手动操作<br>
       · 存档仅保存在本机浏览器，清缓存会丢失
     </div>
-    <button class="menu-item" style="margin-top:18px;width:100%" id="btnReset"><span class="idx">!</span><span class="tx">重新开始（清空存档）</span></button>
+    <button class="menu-item" style="margin-top:10px;width:100%" id="btnReset"><span class="idx">!</span><span class="tx">清除存档并重新开始</span></button>
     <div class="h-sec">关于</div>
     <div style="font-size:12.5px;color:var(--muted);line-height:2">
       · 版本 v0.4<br>· 所有音乐 / 封面均由程序实时生成<br>· 同一张唱片永远听到同一首歌
@@ -487,6 +615,21 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 <div id="modal" class="modal"><div class="modal-box" id="modalBox"></div></div>
 <canvas id="fx"></canvas>
 <div id="toast" class="toast"></div>
+
+<!-- ============ 新手教程（v30） ============
+     「对话 + 演示」：对话沿用游戏自带的 Dialogue 气泡（真正的客人会说的话），
+     教练条只负责在旁边解释"现在该做什么"，并高亮要点的位置。
+     教程结束后 #coach / #tutDemand 永久隐藏，不影响正常营业。 -->
+<div id="coachHi" class="coach-hi"></div>
+<div id="tutDemand"></div>
+<div id="coach">
+  <div class="coach-box">
+    <span class="coach-ic" id="coachIc">📖</span>
+    <div class="coach-tx" id="coachTx">—<small id="coachSub"></small></div>
+    <button class="coach-skip" id="coachSkip">跳过</button>
+  </div>
+  <div class="coach-dots" id="coachDots"></div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -644,11 +787,33 @@ function drawCover(ctx, S, track){
   ctx.font = Math.round(S*0.048) + 'px sans-serif';
   ctx.fillStyle = 'rgba(200,190,230,.85)';
   ctx.fillText(track.genre + ' · ' + track.moods.join(' / '), S*0.06, S*0.935);
+
+  /* v30：金边唱片 —— 封面自身也描一圈金边。
+     为什么画在封面里而不是只做 CSS 边框：封面贴图在三个地方出现
+     （抽卡翻牌面、库存缩略图、3D 唱片标签面），只有画进 canvas，
+     三处才会一致地"一眼看出这是金边"。
+     判断统一走 isGold()（会话级标记表），而不是就地读 track.gold ——
+     原因见 getCoverCanvas 的缓存 key 说明。 */
+  if(isGold(track)){
+    const lw = Math.max(2, Math.round(S*0.030));
+    ctx.strokeStyle = 'rgba(120,80,10,.95)';
+    ctx.lineWidth = lw;
+    ctx.strokeRect(lw/2, lw/2, S-lw, S-lw);
+    ctx.strokeStyle = '#ffd166';
+    ctx.lineWidth = Math.max(1, lw*0.55);
+    ctx.strokeRect(lw*0.62, lw*0.62, S-lw*1.24, S-lw*1.24);
+    ctx.strokeStyle = 'rgba(255,248,224,.85)';
+    ctx.lineWidth = Math.max(1, lw*0.22);
+    ctx.strokeRect(lw*1.25, lw*1.25, S-lw*2.5, S-lw*2.5);
+  }
 }
 
 function getCoverCanvas(track, size){
   size = size || 512;
-  const key = track.id + '_' + size;
+  /* v30：把金边状态编进缓存 key。
+     金边是会话级的（见 GOLD_IDS），同一张唱片可能在 A 局是金边、B 局不是；
+     若沿用 track.id+size 作 key，B 局会拿到 A 局带金边的旧图。 */
+  const key = track.id + '_' + size + (isGold(track) ? '_g' : '');
   if(coverCache.has(key)) return coverCache.get(key);
   const c = document.createElement('canvas');
   c.width = c.height = size;
@@ -1339,37 +1504,153 @@ function onResize(){
   if(v){ v.width = Math.floor(w*0.6); v.height = Math.floor(h*0.6); }
 }
 
-/* -------- 店铺场景 v0.5 -------- */
+/* -------- 店铺场景 v0.5（v30：支持室内装潢主题） --------
+   ── 重构动机 ──
+   旧版把整间店写死在一段代码里，颜色全是字面量。现在要"付费换装潢"，
+   就必须让场景能按主题重建。
+
+   ── 为什么整段重建而不是"改材质" ──
+   主题差异不只是颜色：深海电台要多一层水面与体积光斑，赛博地库要换货架
+   材质并加激光网，昭和喫茶店要换成红皮革椅与吊扇 —— 是"陈设不同"，
+   不是"色调不同"。逐个材质去改会写成一大坨 if，且漏项极难发现。
+   整段重建的代价是几十个 Mesh，只在换装潢/读档时发生一次，可以接受。
+
+   ── 安全性 ──
+   shopScene 被换掉后，台上的客人（guestGroup）要重新挂到新场景上，
+   否则客人会凭空消失（虽然换装潢只发生在日间的店铺管理页、台上没有客人，
+   但读档路径上不一定，所以显式处理）。 */
+
+const SHOP_THEME_STYLE = {
+  neon: {
+    bg:0x0a0612, fog:0x0a0612, fogD:0.042,
+    floor:0x2a1810, floorRough:0.75, floorMetal:0.05,
+    rug:0x3a0a20, rugGlow:0x6a1030,
+    wallB:0x1a0a26, wallL:0x160823, ceil:0x120822,
+    shelf:0x3a2210, shelfEdge:0x5a3016,
+    counter:0x2a1408, counterTop:0x8a5838,
+    sofa:0x5a1030, sofaSeat:0x7a1840,
+    hemi:[0x4a2a6a, 0x1a0d2e, 0.55], amb:[0x8877cc, 0.35],
+    lights:[[0,3.2,-1,0xffd9a0,1.3,12],[-2.4,2.4,-1.6,0xff2e88,1.5,9],[2.2,2.4,-1.6,0x5fe8ff,1.3,9],
+            [1.8,1.4,0.6,0xffb070,0.9,6],[4.2,1.7,1.0,0xffd166,1.5,8],[-1.5,1.5,0.9,0xffd9a0,0.8,4]],
+    tubeA:0xff2e88, tubeB:0x5fe8ff,
+    signInk:'#ff2e88', bulb:0xffd9a0,
+    strip:[0xffd166,0xffd166,0xffd166],
+    posterSet:null, neonGrid:false, water:false, holo:false, fan:false
+  },
+  wood: {
+    bg:0x120c06, fog:0x120c06, fogD:0.038,
+    floor:0x6a4424, floorRough:0.62, floorMetal:0.03,
+    rug:0x4a2a14, rugGlow:0x7a4a24,
+    wallB:0x2e2014, wallL:0x281a10, ceil:0x1e140c,
+    shelf:0x5a3a1c, shelfEdge:0x8a5a2c,
+    counter:0x4a2c12, counterTop:0xc08a52,
+    sofa:0x6a3a1a, sofaSeat:0x8a5a2a,
+    hemi:[0x6a4a24, 0x2a1a10, 0.72], amb:[0xd8b070, 0.42],
+    lights:[[0,3.2,-1,0xffd08a,1.45,13],[-2.4,2.4,-1.6,0xffb060,1.1,9],[2.2,2.4,-1.6,0xffd8a0,1.0,9],
+            [1.8,1.4,0.6,0xffc080,1.0,7],[4.2,1.7,1.0,0xffd166,1.0,8],[-1.5,1.5,0.9,0xffd9a0,1.1,5]],
+    tubeA:0xc08a52, tubeB:0xf0d8b0,
+    signInk:'#f0c880', bulb:0xffd9a0,
+    strip:[0xc08a52,0xf0d8b0,0x8a5a2c],
+    posterSet:null, neonGrid:false, water:false, holo:false, fan:true
+  },
+  deep: {
+    bg:0x03131f, fog:0x03131f, fogD:0.052,
+    floor:0x0a2a3a, floorRough:0.5, floorMetal:0.2,
+    rug:0x0a3a52, rugGlow:0x1a6a8a,
+    wallB:0x062030, wallL:0x041a28, ceil:0x021018,
+    shelf:0x14435c, shelfEdge:0x2a7a9a,
+    counter:0x0a2c3c, counterTop:0x2ec8d8,
+    sofa:0x0e3c50, sofaSeat:0x1a5a72,
+    hemi:[0x2a7a9a, 0x03131f, 0.62], amb:[0x8affd6, 0.38],
+    lights:[[0,3.2,-1,0x8affd6,1.4,13],[-2.4,2.4,-1.6,0x2ec8d8,1.6,10],[2.2,2.4,-1.6,0x5fe8ff,1.4,10],
+            [1.8,1.4,0.6,0x8affd6,1.0,7],[4.2,1.7,1.0,0x8affd6,1.2,8],[-1.5,1.5,0.9,0x8affd6,1.0,5]],
+    tubeA:0x2ec8d8, tubeB:0x8affd6,
+    signInk:'#8affd6', bulb:0x8affd6,
+    strip:[0x2ec8d8,0x8affd6,0x1a6a8a],
+    posterSet:null, neonGrid:false, water:true, holo:false, fan:false
+  },
+  cyber: {
+    bg:0x0a0018, fog:0x0a0018, fogD:0.048,
+    floor:0x1a0a30, floorRough:0.35, floorMetal:0.5,
+    rug:0x2a0a4a, rugGlow:0x6a2ac0,
+    wallB:0x14042a, wallL:0x0e0320, ceil:0x080016,
+    shelf:0x241046, shelfEdge:0x6a2ac0,
+    counter:0x180832, counterTop:0xb03cff,
+    sofa:0x2a0a4a, sofaSeat:0x4a1a6a,
+    hemi:[0x6a2ac0, 0x0a0018, 0.58], amb:[0xb03cff, 0.40],
+    lights:[[0,3.2,-1,0xb03cff,1.5,13],[-2.4,2.4,-1.6,0xff2e88,1.7,10],[2.2,2.4,-1.6,0x5fe8ff,1.6,10],
+            [1.8,1.4,0.6,0xb03cff,1.1,7],[4.2,1.7,1.0,0xff2e88,1.3,8],[-1.5,1.5,0.9,0xb03cff,1.1,5]],
+    tubeA:0xb03cff, tubeB:0xff2e88,
+    signInk:'#b03cff', bulb:0xb03cff,
+    strip:[0xb03cff,0xff2e88,0x5fe8ff],
+    posterSet:null, neonGrid:true, water:false, holo:true, fan:false
+  },
+  showa: {
+    bg:0x180f08, fog:0x180f08, fogD:0.040,
+    floor:0x4a3418, floorRough:0.7, floorMetal:0.04,
+    rug:0x6a3a20, rugGlow:0x8a5a30,
+    wallB:0x3a2414, wallL:0x321e10, ceil:0x241608,
+    shelf:0x6a4520, shelfEdge:0x9a6a34,
+    counter:0x5a3418, counterTop:0xe8d8a0,
+    sofa:0x8a2a20, sofaSeat:0xa83a2a,
+    hemi:[0x8a6a3a, 0x2a1c10, 0.68], amb:[0xe8d8a0, 0.40],
+    lights:[[0,3.2,-1,0xffe8b0,1.35,13],[-2.4,2.4,-1.6,0xe8d8a0,1.0,9],[2.2,2.4,-1.6,0xffd8a0,0.9,9],
+            [1.8,1.4,0.6,0xffd0a0,1.0,7],[4.2,1.7,1.0,0xe8c880,1.0,8],[-1.5,1.5,0.9,0xffe8b0,1.0,5]],
+    tubeA:0x8a2a20, tubeB:0x6a8a4a,
+    signInk:'#e8d8a0', bulb:0xffe8b0,
+    strip:[0x8a2a20,0x6a8a4a,0xe8d8a0],
+    posterSet:null, neonGrid:false, water:false, holo:false, fan:true
+  }
+};
+
 function buildShopScene(){
+  const th = (typeof Game !== 'undefined' && Game && Game.theme) ? Game.theme : 'neon';
+  const S = SHOP_THEME_STYLE[th] || SHOP_THEME_STYLE.neon;
+
+  const prevScene = shopScene;
+  /* v30：换装潢时保留台上的客人，重建后挂回新场景 */
+  let keepGuest = null;
+  try{
+    if(prevScene && guestGroup && prevScene.children.indexOf(guestGroup) >= 0){
+      prevScene.remove(guestGroup);
+      keepGuest = guestGroup;
+    }
+  }catch(e){}
+
   shopScene = new THREE.Scene();
-  shopScene.background = new THREE.Color(0x0a0612);
-  shopScene.fog = new THREE.FogExp2(0x0a0612, 0.042);
-  shopCam = new THREE.PerspectiveCamera(78, window.innerWidth/window.innerHeight, 0.1, 100);
-  shopCam.position.set(0, 1.55, 4.3); shopCam.lookAt(0, 1.0, -0.1);
-  shopScene.add(new THREE.HemisphereLight(0x4a2a6a, 0x1a0d2e, 0.55));
-  shopScene.add(new THREE.AmbientLight(0x8877cc, 0.35));
+  shopScene.background = new THREE.Color(S.bg);
+  shopScene.fog = new THREE.FogExp2(S.fog, S.fogD);
+  if(!shopCam){
+    shopCam = new THREE.PerspectiveCamera(78, window.innerWidth/window.innerHeight, 0.1, 100);
+    shopCam.position.set(0, 1.55, 4.3); shopCam.lookAt(0, 1.0, -0.1);
+  }
+  shopScene.add(new THREE.HemisphereLight(S.hemi[0], S.hemi[1], S.hemi[2]));
+  shopScene.add(new THREE.AmbientLight(S.amb[0], S.amb[1]));
   const L=(x,y,z,c,i,d)=>{const l=new THREE.PointLight(c,i,d||9,2);l.position.set(x,y,z);shopScene.add(l);return l;};
-  L(0,3.2,-1,0xffd9a0,1.3,12); L(-2.4,2.4,-1.6,0xff2e88,1.5); L(2.2,2.4,-1.6,0x5fe8ff,1.3);
-  L(1.8,1.4,0.6,0xffb070,0.9,6); L(4.2,1.7,1.0,0xffd166,1.5,8);
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(16,16),new THREE.MeshStandardMaterial({color:0x2a1810,roughness:0.75,metalness:0.05}));
+  S.lights.forEach(function(a){ L(a[0],a[1],a[2],a[3],a[4],a[5]); });
+
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(16,16),new THREE.MeshStandardMaterial({color:S.floor,roughness:S.floorRough,metalness:S.floorMetal}));
   floor.rotation.x=-Math.PI/2; shopScene.add(floor);
-  const rug=new THREE.Mesh(new THREE.PlaneGeometry(5.4,3.2),new THREE.MeshStandardMaterial({color:0x3a0a20,roughness:0.95}));
+  const rug=new THREE.Mesh(new THREE.PlaneGeometry(5.4,3.2),new THREE.MeshStandardMaterial({color:S.rug,roughness:0.95}));
   rug.rotation.x=-Math.PI/2; rug.position.set(0,0.005,0.4); shopScene.add(rug);
-  const rugE=new THREE.Mesh(new THREE.PlaneGeometry(5.6,3.4),new THREE.MeshBasicMaterial({color:0x6a1030,transparent:true,opacity:0.35}));
+  const rugE=new THREE.Mesh(new THREE.PlaneGeometry(5.6,3.4),new THREE.MeshBasicMaterial({color:S.rugGlow,transparent:true,opacity:0.35}));
   rugE.rotation.x=-Math.PI/2; rugE.position.set(0,0.002,0.4); shopScene.add(rugE);
-  const wallB=new THREE.Mesh(new THREE.PlaneGeometry(16,8),new THREE.MeshStandardMaterial({color:0x1a0a26,roughness:1})); wallB.position.set(0,4,-4.5); shopScene.add(wallB);
-  const wallL=new THREE.Mesh(new THREE.PlaneGeometry(9,8),new THREE.MeshStandardMaterial({color:0x160823,roughness:1})); wallL.rotation.y=Math.PI/2; wallL.position.set(-4.5,4,0); shopScene.add(wallL);
+  const wallB=new THREE.Mesh(new THREE.PlaneGeometry(16,8),new THREE.MeshStandardMaterial({color:S.wallB,roughness:1})); wallB.position.set(0,4,-4.5); shopScene.add(wallB);
+  const wallL=new THREE.Mesh(new THREE.PlaneGeometry(9,8),new THREE.MeshStandardMaterial({color:S.wallL,roughness:1})); wallL.rotation.y=Math.PI/2; wallL.position.set(-4.5,4,0); shopScene.add(wallL);
   const wallR=wallL.clone(); wallR.rotation.y=-Math.PI/2; wallR.position.set(4.5,4,0); shopScene.add(wallR);
-  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(16,16),new THREE.MeshStandardMaterial({color:0x120822,roughness:1})); ceil.rotation.x=Math.PI/2; ceil.position.y=4.2; shopScene.add(ceil);
+  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(16,16),new THREE.MeshStandardMaterial({color:S.ceil,roughness:1})); ceil.rotation.x=Math.PI/2; ceil.position.y=4.2; shopScene.add(ceil);
+
+  /* 招牌：文字色随主题，底衬保持深色以保证可读性 */
   const sc=document.createElement('canvas'); sc.width=512; sc.height=108; const sx=sc.getContext('2d');
   sx.fillStyle='rgba(10,6,18,0.95)'; sx.fillRect(0,0,512,108);
-  sx.font='900 76px sans-serif'; sx.textAlign='center'; sx.fillStyle='#ff2e88'; sx.shadowColor='#ff2e88'; sx.shadowBlur=24; sx.fillText('RECORDS',256,82);
+  sx.font='900 76px sans-serif'; sx.textAlign='center'; sx.fillStyle=S.signInk; sx.shadowColor=S.signInk; sx.shadowBlur=24; sx.fillText('RECORDS',256,82);
   const sign=new THREE.Mesh(new THREE.PlaneGeometry(2.6,0.55),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sc)}));
   sign.position.set(0,3.2,-4.42); shopScene.add(sign);
-  const tube=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.05,0.05),new THREE.MeshBasicMaterial({color:0xff2e88})); tube.position.set(0,2.6,-4.4); shopScene.add(tube);
-  const tube2=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.04,0.04),new THREE.MeshBasicMaterial({color:0x5fe8ff})); tube2.position.set(0,2.3,-4.4); shopScene.add(tube2);
-  const shelfM=new THREE.MeshStandardMaterial({color:0x3a2210,roughness:0.85});
-  const shelfE=new THREE.MeshStandardMaterial({color:0x5a3016,roughness:0.6});
+  const tube=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.05,0.05),new THREE.MeshBasicMaterial({color:S.tubeA})); tube.position.set(0,2.6,-4.4); shopScene.add(tube);
+  const tube2=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.04,0.04),new THREE.MeshBasicMaterial({color:S.tubeB})); tube2.position.set(0,2.3,-4.4); shopScene.add(tube2);
+
+  const shelfM=new THREE.MeshStandardMaterial({color:S.shelf,roughness:0.85});
+  const shelfE=new THREE.MeshStandardMaterial({color:S.shelfEdge,roughness:0.6});
   for(let row=0;row<3;row++) for(let col=0;col<3;col++){
     const x=-3.2+col*2.4, y=1.0+row*0.95;
     const sh=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.06,0.55),shelfM); sh.position.set(x,y,-3.5); shopScene.add(sh);
@@ -1380,37 +1661,129 @@ function buildShopScene(){
       d.position.set(x-0.95+k*0.21,y+0.28,-3.5); shopScene.add(d);
     }
   }
-  const counterM=new THREE.MeshStandardMaterial({color:0x2a1408,roughness:0.75});
-  const topM=new THREE.MeshStandardMaterial({color:0x8a5838,roughness:0.4,metalness:0.15});
+
+  const counterM=new THREE.MeshStandardMaterial({color:S.counter,roughness:0.75});
+  const topM=new THREE.MeshStandardMaterial({color:S.counterTop,roughness:0.4,metalness:0.15});
   const counter=new THREE.Mesh(new THREE.BoxGeometry(4.6,0.95,0.85),counterM); counter.position.set(0.2,0.475,0.8); shopScene.add(counter);
   const counterTop=new THREE.Mesh(new THREE.BoxGeometry(4.8,0.08,1.0),topM); counterTop.position.set(0.2,0.99,0.8); shopScene.add(counterTop);
   const ttBase=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.11,0.9),new THREE.MeshStandardMaterial({color:0x1a0a1a,roughness:0.4,metalness:0.55})); ttBase.position.set(1.7,1.08,0.8); shopScene.add(ttBase);
   const plate=new THREE.Mesh(new THREE.CylinderGeometry(0.36,0.36,0.06,40),new THREE.MeshStandardMaterial({color:0x0a0a0f,roughness:0.25,metalness:0.85})); plate.position.set(1.6,1.17,0.8); shopScene.add(plate); shopScene.userData.plate=plate;
   const arm=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.42),new THREE.MeshStandardMaterial({color:0xcccccc,roughness:0.3,metalness:0.9})); arm.position.set(1.9,1.21,0.9); arm.rotation.y=-0.5; shopScene.add(arm);
+
+  /* 台灯：灯罩用主题主色，作为"主题一眼可见"的锚点之一 */
   const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.5,8),new THREE.MeshStandardMaterial({color:0x111111})); pole.position.set(-1.5,1.25,0.9); shopScene.add(pole);
-  const shade=new THREE.Mesh(new THREE.ConeGeometry(0.18,0.22,16,1,true),new THREE.MeshStandardMaterial({color:0xffd166,emissive:0xffd166,emissiveIntensity:0.6,side:THREE.DoubleSide})); shade.position.set(-1.5,1.6,0.9); shopScene.add(shade);
-  L(-1.5,1.5,0.9,0xffd9a0,0.8,4);
-  const df1=new THREE.Mesh(new THREE.BoxGeometry(0.1,2.6,0.1),new THREE.MeshBasicMaterial({color:0xffd166})); df1.position.set(4.2,1.3,1.6); shopScene.add(df1);
-  const df2=df1.clone(); df2.position.set(4.2,1.3,0.4); shopScene.add(df2);
-  const df3=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,1.3),new THREE.MeshBasicMaterial({color:0xffd166})); df3.position.set(4.2,2.6,1.0); shopScene.add(df3);
+  const shade=new THREE.Mesh(new THREE.ConeGeometry(0.18,0.22,16,1,true),new THREE.MeshStandardMaterial({color:S.bulb,emissive:S.bulb,emissiveIntensity:0.6,side:THREE.DoubleSide})); shade.position.set(-1.5,1.6,0.9); shopScene.add(shade);
+
+  /* 右侧落地灯组（三根竖管 + 横梁），颜色按主题 */
+  const df1=new THREE.Mesh(new THREE.BoxGeometry(0.1,2.6,0.1),new THREE.MeshBasicMaterial({color:S.strip[0]})); df1.position.set(4.2,1.3,1.6); shopScene.add(df1);
+  const df2=new THREE.Mesh(new THREE.BoxGeometry(0.1,2.6,0.1),new THREE.MeshBasicMaterial({color:S.strip[1]})); df2.position.set(4.2,1.3,0.4); shopScene.add(df2);
+  const df3=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,1.3),new THREE.MeshBasicMaterial({color:S.strip[2]})); df3.position.set(4.2,2.6,1.0); shopScene.add(df3);
+
   for(let i=0;i<3;i++){
-    const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.09,12,10),new THREE.MeshBasicMaterial({color:0xffd9a0})); bulb.position.set(-2+i*2,3.7,-0.5); shopScene.add(bulb);
+    const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.09,12,10),new THREE.MeshBasicMaterial({color:S.bulb})); bulb.position.set(-2+i*2,3.7,-0.5); shopScene.add(bulb);
     const hang=new THREE.Mesh(new THREE.CylinderGeometry(0.005,0.005,0.5,4),new THREE.MeshBasicMaterial({color:0x333333})); hang.position.set(-2+i*2,4.0,-0.5); shopScene.add(hang);
   }
-  const sofaB=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.4,0.7),new THREE.MeshStandardMaterial({color:0x5a1030,roughness:0.85})); sofaB.position.set(-3.0,0.2,-0.2); shopScene.add(sofaB);
-  const sofaBk=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.5,0.15),new THREE.MeshStandardMaterial({color:0x5a1030,roughness:0.85})); sofaBk.position.set(-3.0,0.65,-0.5); shopScene.add(sofaBk);
-  const sofaS=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.12,0.55),new THREE.MeshStandardMaterial({color:0x7a1840,roughness:0.9})); sofaS.position.set(-3.0,0.44,-0.2); shopScene.add(sofaS);
+
+  /* 沙发：暖木/昭和用红皮革，其它主题用各自配色 */
+  const sofaB=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.4,0.7),new THREE.MeshStandardMaterial({color:S.sofa,roughness:0.85})); sofaB.position.set(-3.0,0.2,-0.2); shopScene.add(sofaB);
+  const sofaBk=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.5,0.15),new THREE.MeshStandardMaterial({color:S.sofa,roughness:0.85})); sofaBk.position.set(-3.0,0.65,-0.5); shopScene.add(sofaBk);
+  const sofaS=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.12,0.55),new THREE.MeshStandardMaterial({color:S.sofaSeat,roughness:0.9})); sofaS.position.set(-3.0,0.44,-0.2); shopScene.add(sofaS);
+  if(S.fan){
+    /* 吊扇：暖木书房与昭和喫茶店共用，转速写进 userData 供主循环驱动 */
+    const fanG = new THREE.Group();
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,0.6,8), new THREE.MeshStandardMaterial({color:0x2a1a10}));
+    rod.position.y = 0.3; fanG.add(rod);
+    for(let i=0;i<3;i++){
+      const bl = new THREE.Mesh(new THREE.BoxGeometry(0.62,0.012,0.11), new THREE.MeshStandardMaterial({color:S.shelf,roughness:0.6}));
+      bl.position.set(0,0,0);
+      bl.rotation.y = i * Math.PI * 2 / 3;
+      bl.translateX(0.34);
+      fanG.add(bl);
+    }
+    fanG.position.set(0.6, 3.55, -0.6);
+    shopScene.add(fanG);
+    shopScene.userData.fan = fanG;
+  }
+
   for(let i=0;i<3;i++){
     const pc=document.createElement('canvas'); pc.width=200; pc.height=280; const px=pc.getContext('2d');
     const t=TRACKS[i*13%TRACKS.length];
-    px.fillStyle=t.colors[1]; px.fillRect(0,0,200,280);
+    /* 海报底色跟随主题而不是唱片配色：整面墙的配色统一，主题才"成套" */
+    px.fillStyle='#'+new THREE.Color(S.rug).getHexString(); px.fillRect(0,0,200,280);
     px.fillStyle=t.colors[0]; px.beginPath(); px.arc(100,100,60,0,Math.PI*2); px.fill();
     px.fillStyle='#f2ede4'; px.font='900 22px sans-serif'; px.fillText(t.name.slice(0,4),20,230);
     px.font='14px sans-serif'; px.fillStyle='rgba(200,190,230,.85)'; px.fillText(t.genre,20,255);
     const poster=new THREE.Mesh(new THREE.PlaneGeometry(0.7,1.0),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(pc)}));
     poster.position.set(-4.42,2.2,-1.5+i*1.2); poster.rotation.y=Math.PI/2; shopScene.add(poster);
   }
+
+  /* ── 主题专属陈设 ── */
+  if(S.neonGrid){
+    /* 赛博地库：天花板激光网 + 地面反光条 */
+    const lg = new THREE.Group();
+    for(let i=0;i<7;i++){
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,8.6), new THREE.MeshBasicMaterial({color:0xff2e88,transparent:true,opacity:0.5}));
+      b.position.set(-3.6+i*1.2, 4.0, 0); lg.add(b);
+      const b2 = new THREE.Mesh(new THREE.BoxGeometry(8.6,0.02,0.02), new THREE.MeshBasicMaterial({color:0xb03cff,transparent:true,opacity:0.4}));
+      b2.position.set(0, 4.0, -4.0+i*1.15); lg.add(b2);
+    }
+    shopScene.add(lg);
+  }
+  if(S.water){
+    /* 深海电台：顶部水面 + 悬浮光斑 + 上升气泡带
+       水面用半透明平面 + 缓慢上下浮动，制造"在水下抬头看"的通感。 */
+    const water = new THREE.Mesh(
+      new THREE.PlaneGeometry(16,16),
+      new THREE.MeshBasicMaterial({color:0x2ec8d8,transparent:true,opacity:0.10,side:THREE.DoubleSide})
+    );
+    water.rotation.x = Math.PI/2; water.position.y = 4.05; shopScene.add(water);
+    shopScene.userData.water = water;
+    const orbG = new THREE.Group();
+    for(let i=0;i<16;i++){
+      const o = new THREE.Mesh(new THREE.SphereGeometry(0.03+Math.random()*0.05,8,6),
+        new THREE.MeshBasicMaterial({color:0x8affd6,transparent:true,opacity:0.25+Math.random()*0.35}));
+      o.position.set(-4+Math.random()*8, 0.4+Math.random()*3.4, -4+Math.random()*6);
+      o.userData.spd = 0.06+Math.random()*0.14;
+      orbG.add(o);
+    }
+    shopScene.add(orbG);
+    shopScene.userData.orbs = orbG;
+  }
+  if(S.holo){
+    /* 赛博地库：货架前的全息广告板 */
+    const hg = new THREE.Group();
+    for(let i=0;i<2;i++){
+      const c=document.createElement('canvas'); c.width=180; c.height=120; const cx2=c.getContext('2d');
+      cx2.fillStyle='#0a0018'; cx2.fillRect(0,0,180,120);
+      cx2.font='900 30px sans-serif'; cx2.textAlign='center'; cx2.fillStyle='#5fe8ff';
+      cx2.shadowColor='#5fe8ff'; cx2.shadowBlur=16; cx2.fillText('SOUND',90,72);
+      const p=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.0),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,opacity:0.55}));
+      p.position.set(-3.4+i*6.8, 2.5, -1.2); p.rotation.y = i ? -0.5 : 0.5;
+      hg.add(p);
+    }
+    shopScene.add(hg);
+    shopScene.userData.holo = hg;
+  }
+
+  /* v30：客人挂回新场景 */
+  if(keepGuest) shopScene.add(keepGuest);
+
+  /* 记录当前场景用的是哪套装潢，供启动时的"是否需要重建"判断使用 */
+  shopScene.userData.themeId = th;
 }
+
+/* v30：换装潢的入口。重建场景 + 同步 3D 背景色，让"钱花在哪"立刻可见。 */
+function applyShopTheme(){
+  try{
+    if(typeof THREE === 'undefined') return;
+    buildShopScene();
+    if(renderer){
+      const th = SHOP_THEME_STYLE[Game.theme] || SHOP_THEME_STYLE.neon;
+      renderer.setClearColor(th.bg, 1);
+    }
+  }catch(e){ console.warn('换装潢失败', e); }
+}
+window.applyShopTheme = applyShopTheme;
 
 /* -------- 客人模型 v0.5 -------- */
 let guestGroup=null;
@@ -1656,6 +2029,23 @@ function loop(){
   } else {
     // 店铺场景
     if(shopScene.userData.plate) shopScene.userData.plate.rotation.y += dt * 0.4;
+    /* v30：主题专属陈设的动画。都放在这里而不是各自的 setTimeout 里 ——
+       一个 requestAnimationFrame 驱动全部，切换主题时不会有孤立定时器残留。 */
+    const ud = shopScene.userData;
+    if(ud.fan) ud.fan.rotation.y += dt * 1.15;
+    if(ud.water) ud.water.position.y = 4.05 + Math.sin(now/2600) * 0.12;
+    if(ud.orbs){
+      for(let i = 0; i < ud.orbs.children.length; i++){
+        const o = ud.orbs.children[i];
+        o.position.y += dt * o.userData.spd;
+        if(o.position.y > 3.9){ o.position.y = 0.35; o.position.x = -4 + Math.random()*8; }
+      }
+    }
+    if(ud.holo){
+      for(let i = 0; i < ud.holo.children.length; i++){
+        ud.holo.children[i].material.opacity = 0.42 + Math.sin(now/900 + i*1.7) * 0.16;
+      }
+    }
     if(guestGroup){
       // 待机呼吸
       guestGroup.position.y = Math.sin(now/700) * 0.015;
@@ -1993,9 +2383,15 @@ function modal(html, opts){
 /* ------------------------- 7. 游戏状态 ------------------------- */
 const Game = {
   day: 1, coins: 0, inventory: [],
-  shopLevel: 1, recordPlayerLevel: 1,
-  decor: { poster:1, rug:1, neon:1, sign:1, sofa:1 },
-  adBoost: 0,
+  /* v30：旧经济字段（shopLevel / recordPlayerLevel / decor / adBoost）已全部删除，
+     改为「室内装潢主题 + 三种护符」。旧字段在 load() 里不再读取，
+     但旧存档里残留的键会被忽略（不是删除——删了反而会让别人导入老档时报错）。 */
+  theme: 'neon',            /* 当前使用的装潢主题 id */
+  themes: ['neon'],         /* 已拥有的主题 id 列表 */
+  talismans: [],            /* 下一局生效的护符 id 列表（买完当天下一天消耗掉） */
+  talismanUses: 0,          /* 累计使用护符次数（成就用） */
+  goldSold: 0,              /* 累计售出金边唱片数（成就用） */
+  listenCount: 0,           /* 累计试听次数 */
   repGood: 0, repBad: 0,
   stats: {
     income:0, expense:0, served:0, sold:0, good:0, ok:0, bad:0,
@@ -2019,16 +2415,118 @@ const Game = {
   _dayGood: 0
 };
 
-function totalDecor(){
-  return Object.values(Game.decor).reduce((a,b)=>a+b, 0);
-}
-function decorMult(){
-  return 1 + (totalDecor() - 5) * 0.025;
+/* ------------------------- 7.1 室内装潢主题（v30） -------------------------
+   ── 为什么推倒重来做 ──
+   旧设计是「店铺 Lv / 唱片机 Lv / 5 件家具各 3 级」：
+     · 家具升满（10 次）共约 10000 金币，只换来 +25% 基准价；
+       而日均营业额约 500 金币 —— 也就是说要玩 20 天，收益提升才 25%。
+     · 店铺满级（4000+9000）又是 +30%，同样遥不可及。
+   数值上"永远买不起"，体感上就等于"没有升级"，这正是"金币升级没用"的根因。
+
+   新设计把一次性投资压到 10~14 天可回本，并且每一档都**换一套真实可见的
+   3D 场景**（不是换个数字），所以花钱立刻看得见。倍率作用于基准价，
+   与旧 decorMult/shopMult 的合成方式一致（相乘），但来源只有一个，更可控。
+
+   cost 是"追加投资"（买到这一档要付的钱），mult 是**绝对倍率**（不叠加）。 */
+const THEMES = [
+  { id:'neon',  name:'霓虹街头', cost:0,    mult:1.00, sw:['#ff2e88','#5fe8ff','#0a0612','#ffd166'],
+    desc:'默认店面 · 粉紫霓虹的深夜街角', tone:'当前版本场景' },
+  { id:'wood',  name:'暖木书房', cost:1000, mult:1.15, sw:['#c08a52','#7a4a24','#2a1a10','#f0d8b0'],
+    desc:'暖木地板与黄铜台灯 · 一间有人情味的旧书店', tone:'基准价 ×1.15' },
+  { id:'deep',  name:'深海电台', cost:2000, mult:1.30, sw:['#2ec8d8','#0a4a66','#03131f','#8affd6'],
+    desc:'水面浮光与低频嗡鸣 · 沉在海底的广播站', tone:'基准价 ×1.30' },
+  { id:'cyber', name:'赛博地库', cost:3200, mult:1.48, sw:['#b03cff','#ff2e88','#0a0018','#5fe8ff'],
+    desc:'全息货架与紫色激光网 · 地下电子乐黑市', tone:'基准价 ×1.48' },
+  { id:'showa', name:'昭和喫茶店', cost:4800, mult:1.70, sw:['#e8d8a0','#8a2a20','#2a1c10','#6a8a4a'],
+    desc:'红皮革高背椅与吊扇 · 1978 年的老咖啡店', tone:'基准价 ×1.70' }
+];
+const THEME_BY_ID = {};
+THEMES.forEach(t => THEME_BY_ID[t.id] = t);
+function themeDef(id){ return THEME_BY_ID[id] || THEME_BY_ID.neon; }
+function themeMult(){ return themeDef(Game.theme).mult; }
+function hasTheme(id){ return (Game.themes || []).indexOf(id) >= 0; }
+function ownsThemeCount(){ return (Game.themes || []).length; }
+
+/* ------------------------- 7.2 三种护符（v30） -------------------------
+   ── 三条规则里有两处是"对玩家隐藏的"或"抽任务时才执行"，务必分清 ──
+     · 蓝：**结算时**判定 —— 客人不满意时也照付 BLUE_PAY 金币。
+     · 黄：**结算时**判定 —— 满意（good/ok）时收入 ×1.10 并四舍五入。
+           数值规则**不告诉玩家**（描述只说"提高获得的金币数量"），
+           因为揭示 10% 会让"选唱片策略"退化成算术题。
+     · 绿：**抽任务时**判定 —— 见 stockScreen 里的重抽循环，不是结算时补钱。
+           它保证的是"店内唱片有可能让所有人满意"，即存在一种分配让
+           5 位客人全部不落空（nonBad === 5），而不是保证客人一定满意。
+   全部 **仅下一局生效**：在店铺管理里买下，第二天抽任务前消耗掉。 */
+const TALISMANS = [
+  { id:'blue',  name:'海蓝护符', cls:'bl', cost:80,
+    short:'不满意也照付 50 金币',
+    desc:'即使客人不满意，也会支付你 50 金币' },
+  { id:'amber', name:'琥珀护符', cls:'yl', cost:120,
+    short:'提高满意时获得的金币',
+    /* 注意：这里刻意不写 +10%，见上方说明 */
+    desc:'客人满意时，提高你获得的金币数量' },
+  { id:'jade',  name:'翠玉护符', cls:'gr', cost:150,
+    short:'保证店内唱片人人有份',
+    desc:'下一天分配客人时，保证店内的唱片有可能让所有人都满意' }
+];
+const TAL_BY_ID = {};
+TALISMANS.forEach(t => TAL_BY_ID[t.id] = t);
+const BLUE_PAY   = 50;    /* 蓝护符：不满意时的安慰金 */
+const AMBER_MULT = 1.10;  /* 黄护符：满意时的收入倍率（对玩家隐藏） */
+function hasTal(id){ return (Game.talismans || []).indexOf(id) >= 0; }
+
+/* 结算完成、进入下一天前调用：护符只保一局，用完即焚 */
+function consumeTalismans(){
+  if((Game.talismans || []).length){
+    Game.talismanUses = (Game.talismanUses || 0) + Game.talismans.length;
+    Game.talismans = [];
+  }
 }
 
-function shopMult(){
-  return 1 + (Game.shopLevel - 1) * 0.10;
-}function rarityMult(r){ return r===3 ? 1.8 : (r===2 ? 1.3 : 1); }
+function rarityMult(r){ return r===3 ? 1.8 : (r===2 ? 1.3 : 1); }
+
+/* ------------------------- 7.3 金边唱片（v30） -------------------------
+   金边 = 唱片多一个 `gold:true` 标记：
+     · CD 建模多一圈金黄包边（buildRecord 里的环 + 封面 canvas 的描边）
+     · 库存/收藏卡右上角加「金边」角标，卡片描金
+     · 抽卡时金色光晕，并且**满足客人需求时给更多金币**
+   它和 rarity（★ 稀有度）是两个正交的属性：一张普通唱片也可能是金边。
+   这样可以保证付费进货「稀有」档的承诺（一定含一张金边）不依赖运气。 */
+const GOLD_GOOD_MULT = 1.35;   /* 金边 + 满意(good) 时的额外倍率 */
+const GOLD_OK_MULT   = 1.15;   /* 金边 + 还算满意(ok) 时的额外倍率 */
+
+/* 金边标记不是 track 上的固有字段（TRACKS 是共享对象，不能就地改，
+   否则下一局抽到同一张还会带着上一局的金边）。
+   改成**会话级标记表**：每局开始时清空。 */
+let GOLD_IDS = new Set();
+function markGold(track){
+  if(!track) return;
+  GOLD_IDS.add(String(track.id));
+  track.gold = true;
+}
+function isGold(track){
+  if(!track) return false;
+  return GOLD_IDS.has(String(track.id)) || !!track.gold;
+}
+function clearGoldMarks(){
+  GOLD_IDS.forEach(function(id){
+    const t = TRACK_BY_ID[id];
+    if(t) delete t.gold;
+  });
+  GOLD_IDS = new Set();
+}
+function goldMult(track, result){
+  if(!isGold(track)) return 1;
+  if(result === 'good') return GOLD_GOOD_MULT;
+  if(result === 'ok')   return GOLD_OK_MULT;
+  return 1;
+}
+/* v30：抽卡/库存/收藏三处共用同一个标签文本，避免各写一份导致不一致 */
+function rarityLabel(t){
+  if(!t) return '';
+  const base = t.rarity === 3 ? '珍稀' : (t.rarity === 2 ? '稀有' : '普通');
+  return isGold(t) ? (base + ' · 金边') : base;
+}
 
 /* ------------------------- 8. 存档 ------------------------- */
 const SAVE_KEY = 'record_shop_save_v04';
@@ -2037,10 +2535,12 @@ function save(){
   try{
     const data = {
       day: Game.day, coins: Game.coins, inventory: Game.inventory,
-      shopLevel: Game.shopLevel, recordPlayerLevel: Game.recordPlayerLevel,
-      decor: Game.decor, repGood: Game.repGood, repBad: Game.repBad,
+      /* v30：新经济字段 */
+      theme: Game.theme, themes: Game.themes, talismans: Game.talismans,
+      talismanUses: Game.talismanUses, goldSold: Game.goldSold,
+      listenCount: Game.listenCount,
+      repGood: Game.repGood, repBad: Game.repBad,
       stats: Game.stats, collection: Game.collection, achievements: Game.achievements,
-      adBoost: Game.adBoost,
       /* v20：持久化"当天进行中"的进度，避免返回主菜单后回退到当天早上抽卡 */
       _dayInProgress: !!Game._dayInProgress,
       guestsToday: Game.guestsToday || 0,
@@ -2048,6 +2548,9 @@ function save(){
       daySoldList: Game.daySoldList || [],
       dayIncome: Game.dayIncome || 0,
       dayExpense: Game.dayExpense || 0,
+      /* v30：金边标记是"这一局里哪些唱片是金边"，必须跟着存档走，
+         否则刷新页面后金边全丢（而它们已经算进了进货成本）。 */
+      goldIds: Array.from(GOLD_IDS),
       dayCollected: Game.dayCollected || [],
       _dayMoods: (Game._dayMoods && Game._dayMoods.size) ? Array.from(Game._dayMoods) : [],
       _dayGood: Game._dayGood || 0,
@@ -2074,10 +2577,23 @@ function load(){
     const d = JSON.parse(s);
     Object.assign(Game, {
       day: d.day ?? 1, coins: d.coins ?? 0, inventory: d.inventory ?? [],
-      shopLevel: d.shopLevel ?? 1, recordPlayerLevel: d.recordPlayerLevel ?? 1,
-      decor: d.decor ?? Game.decor, repGood: d.repGood ?? 0, repBad: d.repBad ?? 0,
+      /* v30：新经济字段。旧存档里没有这些键 → 回落到"只有默认主题、无护符"，
+         等价于一次干净的新经济起点；旧档里残留的 shopLevel/decor/adBoost
+         等键在这里被自然忽略（不读即无效），不需要迁移代码。 */
+      theme: THEME_BY_ID[d.theme] ? d.theme : 'neon',
+      themes: (Array.isArray(d.themes) && d.themes.length)
+        ? d.themes.filter(function(id){ return !!THEME_BY_ID[id]; })
+        : ['neon'],
+      talismans: (Array.isArray(d.talismans) ? d.talismans : [])
+        .filter(function(id){ return !!TAL_BY_ID[id]; }),
+      talismanUses: d.talismanUses || 0,
+      goldSold: d.goldSold || 0,
+      listenCount: d.listenCount || 0,
+      /* v30：金边标记表的恢复。放在 Object.assign 之后单独做，
+         因为它要写进模块级的 GOLD_IDS 而不只是 Game。 */
+      repGood: d.repGood ?? 0, repBad: d.repBad ?? 0,
       stats: d.stats ?? Game.stats, collection: d.collection ?? [],
-      achievements: d.achievements ?? [], adBoost: d.adBoost ?? 0,
+      achievements: d.achievements ?? [],
       /* v20 当天进度 */
       _dayInProgress: !!d._dayInProgress,
       guestsToday: d.guestsToday || 0,
@@ -2098,6 +2614,13 @@ function load(){
       /* v21：局内进度原子性 */
       _curGuest: (typeof d._curGuest === 'number' ? d._curGuest : -1),
       _curGuestDone: !!d._curGuestDone
+    });
+    /* v30：恢复金边标记表（必须在 Object.assign 之后，
+       因为它写的是模块级 GOLD_IDS 而不是 Game 的字段）。 */
+    clearGoldMarks();
+    (Array.isArray(d.goldIds) ? d.goldIds : []).forEach(function(id){
+      const t = getTrackById(id);
+      if(t) markGold(t);
     });
     /* v21：读档时若发现"正在服务中且已成交"的残留标记（异常退出），
        把它结算掉，避免这位客人被重复接待。 */
@@ -2125,9 +2648,10 @@ function refreshSaveInfo(){
 }
 function resetGame(){
   Game.day = 1; Game.coins = 0; Game.inventory = [];
-  Game.shopLevel = 1; Game.recordPlayerLevel = 1;
-  Game.decor = { poster:1, rug:1, neon:1, sign:1, sofa:1 };
-  Game.adBoost = 0; Game.repGood = 0; Game.repBad = 0;
+  /* v30：新经济字段复位 */
+  Game.theme = 'neon'; Game.themes = ['neon']; Game.talismans = [];
+  Game.talismanUses = 0; Game.goldSold = 0; Game.listenCount = 0;
+  Game.repGood = 0; Game.repBad = 0;
   Game.stats = { income:0, expense:0, served:0, sold:0, good:0, ok:0, bad:0, history:[] };
   Game.collection = []; Game.achievements = [];
   /* v20 清空当天进度与成就依赖字段 */
@@ -2137,6 +2661,14 @@ function resetGame(){
   Game._dayMoods = new Set(); Game._dayGood = 0;
   Game.seenStories = []; Game.goodStories = []; Game.usedStories = [];
   Game._rareSold = 0; Game._bigSale = false; Game._perfectDay = false; Game._usedAd = false;
+  /* v30：金边标记表必须跟着清 —— 它不在 Game 上（见 7.3 说明）。
+     漏掉这一句的后果是"新档里昨天的金边还留着"。 */
+  clearGoldMarks();
+  /* v30：新手教程只在"真正的新档"里再跑一次。
+     用 localStorage 之外的一个独立键，因为 resetGame() 会清掉主存档，
+     而教程的"已看过"状态应该比单局进度更持久一点（换档想重看，
+     走设置里的「重看新手教程」按钮）。 */
+  try{ localStorage.removeItem(TUTORIAL_KEY); }catch(e){}
   localStorage.removeItem(SAVE_KEY);
   refreshSaveInfo();
 }
@@ -2157,10 +2689,10 @@ const ACHIEVEMENTS = [
   { id:'a12', name:'三种情绪',     desc:'一天内售出 3 种不同情绪',    chk:g=> (g._dayMoods && g._dayMoods.size >= 3) },
   { id:'a13', name:'完美一天',     desc:'一天内 5 位客人全部非常满意',chk:g=> g._perfectDay },
   { id:'a14', name:'一掷千金',     desc:'单笔消费 ≥ 300 金币',       chk:g=> g._bigSale },
-  { id:'a15', name:'满级店铺',     desc:'店铺升到 Lv.5',            chk:g=> g.shopLevel >= 5 },
-  { id:'a16', name:'唱片机发烧友', desc:'唱片机升到 Lv.4',          chk:g=> g.recordPlayerLevel >= 4 },
-  { id:'a17', name:'装修大师',     desc:'所有装修项目升到 Lv.3',     chk:g=> Object.values(g.decor).every(v=>v>=3) },
-  { id:'a18', name:'广告大亨',     desc:'使用过广告推广',            chk:g=> g._usedAd },
+  { id:'a15', name:'新装开张',     desc:'拥有 2 种室内装潢',        chk:g=> (g.themes||[]).length >= 2 },
+  { id:'a16', name:'主题收藏家',   desc:'拥有全部 5 种室内装潢',     chk:g=> (g.themes||[]).length >= 5 },
+  { id:'a17', name:'护符常客',     desc:'累计使用 10 枚护符',        chk:g=> (g.talismanUses||0) >= 10 },
+  { id:'a18', name:'金边猎人',     desc:'累计售出 3 张金边唱片',     chk:g=> (g.goldSold||0) >= 3 },
   { id:'a19', name:'稀有猎人',     desc:'售出 5 张 ★★★ 唱片',       chk:g=> (g._rareSold||0) >= 5 },
   { id:'a20', name:'深夜电台',     desc:'第 30 天仍然在营业',        chk:g=> g.day >= 30 }
 ];
@@ -2320,9 +2852,13 @@ function renderInventory(selectable, onPick){
   }
   Game.inventory.forEach(tid=>{
     const t = getTrackById(tid); if(!t) return;
+    const gold = isGold(t);
     const card = document.createElement('div');
-    card.className = 'inv-card' + (t.rarity === 3 ? ' r3' : t.rarity === 2 ? ' r2' : '');
-    card.innerHTML = '<div class="inv-thumb"><img src="' + getCoverCanvas(t, 200).toDataURL('image/jpeg', 0.85) + '" alt="">' + (t.rarity > 1 ? '<div class="rbadge">' + '★'.repeat(t.rarity) + '</div>' : '') + '</div><div class="inv-info"><div class="nm">' + t.name + '</div><div class="tags"><span class="tag-pill genre">' + t.genre + '</span>' + t.moods.map(function(m){return '<span class="tag-pill mood">' + m + '</span>'}).join('') + '</div><div class="meta">' + t.bpm + ' BPM · ' + (t.rarity === 3 ? '珍稀' : t.rarity === 2 ? '稀有' : '普通') + '</div></div>';
+    card.className = 'inv-card' + (t.rarity === 3 ? ' r3' : t.rarity === 2 ? ' r2' : '') + (gold ? ' gold' : '');
+    card.innerHTML = '<div class="inv-thumb"><img src="' + getCoverCanvas(t, 200).toDataURL('image/jpeg', 0.85) + '" alt="">' +
+      (t.rarity > 1 ? '<div class="rbadge">' + '★'.repeat(t.rarity) + '</div>' : '') +
+      (gold ? '<div class="gbadge">金边</div>' : '') +
+      '</div><div class="inv-info"><div class="nm">' + t.name + '</div><div class="tags"><span class="tag-pill genre">' + t.genre + '</span>' + t.moods.map(function(m){return '<span class="tag-pill mood">' + m + '</span>'}).join('') + '</div><div class="meta">' + t.bpm + ' BPM · ' + rarityLabel(t) + '</div></div>';
     card.onclick = function(){ if(selectable && onPick) onPick(t); };
     list.appendChild(card);
   });
@@ -2564,6 +3100,16 @@ async function guestLeave(){
 async function runOneDay(){
   if(Game.abort) return;
 
+  /* v30：第一次开店之前跑一遍新手教程。
+     做法是把这一天**布置成"已经抽完卡"的样子**（预设客人 + 3 张演示唱片），
+     于是下面的 canResumeDay() 自然返回 true，既不走 stockScreen()
+     也不会重置当天统计 —— 后面 serveOneGuest / reportScreen /
+     shopManageScreen 一行都不用改。这正是"复用真实流程"的好处：
+     教程跑的就是正片代码，玩家学到的手感与之后完全一致。
+
+     位置必须在 canResumeDay() 之前，否则本函数会先按"全新的一天"清场。 */
+  if(Tutorial.shouldRun()) Tutorial.prepareDay();
+
   /* v20：若当天已抽完卡且未服务满 5 位客人，则接着上次进度继续，
      不再重新抽卡、不再回退到当天早上。 */
   const resuming = canResumeDay();
@@ -2601,7 +3147,9 @@ async function runOneDay(){
     save();
   }
 
-  const maxGuests = 5;
+  /* v30：教程日只服务 1 位客人。
+     写在运行时求值而不是常量，是为了让教程接进来时不用改这一段的结构。 */
+  const maxGuests = Game._tutorialDay ? 1 : 5;
   const stories = Game.dayStories || [];
   $('pauseBtn').classList.add('on');
 
@@ -2636,6 +3184,17 @@ async function runOneDay(){
   Game._dayInProgress = false;
   save();
 
+  /* v30：教程日的收尾。放在这里（客人循环之后、结算之前）是因为
+     这正是"这一天的营业结束了"的那一刻：
+       · 让教练条把最后两句说完（听需求→看库存→试听→交付 / 今天先到这里）
+       · 把 _tutorialDay 落回 false —— 漏了它，第 2 天也会只服务 1 位客人 */
+  if(Game._tutorialDay && Tutorial.active){
+    Tutorial.deliveredGood();
+    await wait(2400);
+    Tutorial.end();
+  }
+  Game._tutorialDay = false;
+
   if(Game.abort) return;
   await reportScreen();
   if(Game.abort) return;
@@ -2663,31 +3222,65 @@ async function serveOneGuest(story){
   if(Game.seenStories.indexOf(story.id) < 0) Game.seenStories.push(story.id);
 
   await spawnGuest(story);
+  /* v30 教程：客人进门时挂出教练条与需求面板。
+     这三处 if(Tutorial.active) 是教程与正片之间**唯一**的耦合点，
+     教程未激活时它们不产生任何行为变化。 */
+  if(Tutorial.active) Tutorial.guestEnter();
   await Dialogue.play(story.lines);
   if(Game.abort) return;
 
-  let chosen = null;
+  let chosen = null, j = null;
   while(!chosen){
     if(Game.abort) return;
+    if(Tutorial.active) Tutorial.beforeInventory();
     const track = await openInventoryForGuest();
     /* v28：null = 会话被作废（清空存档 / 回主菜单），干净退栈。
        少了这一句，null 会被拿去 RecView.open()，进而读 track.name 报错。 */
     if(track === null || track === undefined) return;
     if(Game.abort) return;
+    if(Tutorial.active) Tutorial.beforeRecord();
     const action = await RecView.open(track);
-    if(action === 'give'){ chosen = track; }
+    if(action !== 'give'){ if(Game.abort) return; continue; }
+    j = judge(track, story);
+
+    /* v30 教程：交错了**不消耗唱片**，先讲清楚为什么不对，再让玩家重来一次。
+       判断放在金币/库存/统计落定之前，所以这次失败的尝试完全不污染局面。
+       只在教程里做 —— 正片里"交错"是有代价的，那才是玩法。 */
+    if(Tutorial.active && j.result === 'bad' && !Tutorial._retried){
+      Tutorial._retried = true;
+      await Dialogue.play([['g', story.endings.bad]]);
+      await Tutorial.retryCoach(j);
+      save();
+      continue;
+    }
+    chosen = track;
     if(Game.abort) return;
   }
-
-  const j = judge(chosen, story);
+  if(!j) j = judge(chosen, story);
+  /* v30 结算公式。改动点：
+       · 删掉 decorMult()/shopMult()（旧经济的两个来源），换成唯一的 themeMult()
+       · 新增金边加成 goldMult()（只有这张唱片是金边才有）
+       · 新增黄护符 amberMult()（对玩家隐藏的 +10%）
+     相乘顺序不影响结果（都是乘法），但**四舍五入只做最后一次**，
+     中间不取整 —— 否则多个小倍率各自取整会累积误差，
+     让"提高 10%"在某些价格上变成 +0 或 +20。 */
+  const tMult = themeMult();
+  const gMult = goldMult(chosen, j.result);
+  const aMult = hasTal('amber') ? AMBER_MULT : 1;
   let price = 0;
-  if(j.result === 'good') price = Math.round(chosen.basePrice * rarityMult(chosen.rarity) * decorMult() * shopMult() * 1.6);
-  else if(j.result === 'ok') price = Math.round(chosen.basePrice * rarityMult(chosen.rarity) * decorMult() * shopMult() * 1.0);
+  if(j.result === 'good') price = Math.round(chosen.basePrice * rarityMult(chosen.rarity) * tMult * gMult * aMult * 1.6);
+  else if(j.result === 'ok') price = Math.round(chosen.basePrice * rarityMult(chosen.rarity) * tMult * gMult * aMult * 1.0);
+  /* 蓝护符：客人不满意也照付固定安慰金。这是"兜底"而不是"奖励"，
+     所以它不吃任何倍率（含装潢、金边、黄护符）—— 否则装潢越好，
+     故意交烂片的收益越高，玩法会被带偏。 */
+  const bluePaid = (j.result === 'bad' && hasTal('blue'));
+  if(bluePaid) price = BLUE_PAY;
+  const goldHit = isGold(chosen) && j.result !== 'bad';
 
   const idx = Game.inventory.indexOf(chosen.id);
   if(idx >= 0) Game.inventory.splice(idx, 1);
 
-  Game.daySoldList.push({ track:chosen, result:j.result, price });
+  Game.daySoldList.push({ track:chosen, result:j.result, price:price, gold:isGold(chosen) });
   if(price > 0){
     Game.coins += price;
     var _hrv = document.getElementById('hudRevenueVal');
@@ -2696,6 +3289,7 @@ async function serveOneGuest(story){
     Game.stats.income += price;
     Game.stats.sold++;
   }
+  if(goldHit) Game.goldSold = (Game.goldSold || 0) + 1;
   if(j.result === 'good'){
     Game.stats.good++; Game._dayGood++; Game.repGood++;
     if(!Game.goodStories) Game.goodStories = [];
@@ -2725,12 +3319,20 @@ async function serveOneGuest(story){
   }
 
   const icon = j.result === 'good' ? '💖' : (j.result === 'ok' ? '🙂' : '💔');
-  const title = j.result === 'good' ? '非常满意' : (j.result === 'ok' ? '还算满意' : '被拒绝了');
+  let title = j.result === 'good' ? '非常满意' : (j.result === 'ok' ? '还算满意' : '被拒绝了');
+  /* v30：金边成交要显式说出来，否则玩家不会把"多出来的钱"归因到金边 */
+  if(goldHit && j.result === 'good') title = '非常满意 · 金边';
   const sub = j.result === 'bad' ? '客人失落地离开了，但故事还在。' :
               (j.result === 'good' ? '你找到了那个声音。' : '嗯，还不错。');
+  /* v30：把金币来源逐条摊开。
+       蓝护符的安慰金要单独说明（玩家会疑惑"不满意为什么还给钱"），
+       金边/黄护符则只提示"有加成"，不报倍率 —— 黄护符的 10% 是隐藏规则。 */
+  const goldTag = isGold(chosen) ? '<p style="color:var(--gold);font-size:11.5px;margin-bottom:12px">金边唱片 · 金币加成</p>' : '';
+  const blueTag = bluePaid ? '<p style="color:#8fd8ff;font-size:11.5px;margin-bottom:12px">海蓝护符 · 安慰金 50</p>' : '';
   await modal(`
     <h3>${icon} ${title}</h3>
     <p>《${chosen.name}》\n${chosen.genre} · ${chosen.moods.join(' / ')}</p>
+    ${goldTag}${blueTag}
     ${price>0 ? `<div class="big">+${price} 金币</div>` : `<div class="big" style="color:var(--muted)">0 金币</div>`}
     <p>${sub}</p>
     <button data-val="ok">继续</button>
@@ -2740,7 +3342,14 @@ async function serveOneGuest(story){
   checkAchievements();
   save();
 }
-/* PATCH v12 进货配平 */
+/* PATCH v12 进货配平（v30 重做三档进货）
+   ── 配平条件为什么要分两套 ──
+   基线（good>=2 && nonBad>=3）是"每天都有牌可打"的宽松保证，实测天然命中率
+   26.78%（见 tools/econ-calib.js），所以普通进货几乎一次就中。
+   绿护符承诺更强："店内唱片有可能让所有人满意" —— 必须存在一种分配使
+   5 位客人**全部不落空**（nonBad === 5）。实测单次命中只有 34.15%，
+   所以要重抽（平均 4.9 次，上限 300 次内命中率 100%）。
+   两套条件共用同一个"最优一对一分配"搜索，避免各写一份走样。 */
 function permute5(){
   const result = [];
   const perm = [];
@@ -2761,56 +3370,134 @@ function permute5(){
 }
 const ALL_PERMS = permute5();
 
-function checkMatch(inventory, stories){
-  for(let pi = 0; pi < ALL_PERMS.length; pi++){
-    const perm = ALL_PERMS[pi];
-    let good = 0, nonBad = 0;
-    for(let i = 0; i < 5; i++){
-      const t = TRACK_BY_ID[inventory[perm[i]]];
-      if(!t) continue;
-      const j = judge(t, stories[i]);
-      if(j.result === 'good') good++;
-      if(j.result !== 'bad') nonBad++;
+/* 在库存里搜最优一对一分配，返回 {good, nonBad}。
+   库存可能多于 5 张（精选/稀有给 6 张），所以从全库里选 5 张配对。 */
+function bestMatch(inventory, stories){
+  const n = inventory.length, m = Math.min(5, stories.length);
+  const R = [];
+  for(let i = 0; i < m; i++){
+    const row = [];
+    for(let j = 0; j < n; j++){
+      const t = TRACK_BY_ID[inventory[j]];
+      row.push(t ? judge(t, stories[i]).result : 'bad');
     }
-    if(good >= 2 && nonBad >= 3) return true;
+    R.push(row);
   }
-  return false;
+  let bestGood = 0, bestNonBad = 0;
+  const used = new Array(n).fill(false);
+  let cg = 0, cn = 0;
+  function dfs(i){
+    if(i === m){
+      if(cg > bestGood || (cg === bestGood && cn > bestNonBad)){ bestGood = cg; bestNonBad = cn; }
+      return;
+    }
+    for(let j = 0; j < n; j++){
+      if(used[j]) continue;
+      used[j] = true;
+      const r = R[i][j];
+      const g = r === 'good' ? 1 : 0, nb = r === 'bad' ? 0 : 1;
+      cg += g; cn += nb;
+      dfs(i + 1);
+      cg -= g; cn -= nb;
+      used[j] = false;
+    }
+  }
+  dfs(0);
+  return { good: bestGood, nonBad: bestNonBad };
+}
+function checkMatch(inventory, stories){
+  const q = bestMatch(inventory, stories);
+  return q.good >= 2 && q.nonBad >= 3;
+}
+/* 绿护符的强条件：存在一种分配让 5 位客人全部不落空 */
+function checkAllServe(inventory, stories){
+  if(stories.length < 5) return false;
+  return bestMatch(inventory, stories).nonBad === 5;
+}
+
+/* v30 进货三档：
+     normal 免费      随机 5 张，每张独立小概率成为金边
+     fine  150 金币   随机 6 张，金边概率提高
+     rare  250 金币   随机 6 张，**必定含 1 张金边**，金边概率最高
+   金边与稀有度正交：一张普通唱片也可能是金边（见 7.3）。
+   金边概率给在"张"上而不是"批次"上，这样 6 张的批次自然更容易出金边，
+   与"花钱买更好的货"的直觉一致。 */
+const RESTOCK = {
+  normal: { cost:0,   count:5, goldChance:0.10, label:'普通进货', note:'随机 5 张 · 小概率金边' },
+  fine:   { cost:150, count:6, goldChance:0.22, label:'精选',     note:'随机 6 张 · 较高概率金边' },
+  rare:   { cost:250, count:6, goldChance:0.34, label:'稀有',     note:'随机 6 张 · 必有 1 张金边' }
+};
+
+/* 抽一批唱片：返回 {ids:[], goldCount:[]}。
+   guarantee 为 true 时，若这批一个金边都没抽到，就把其中一张"提拔"为金边
+   （而不是额外塞一张），这样 6 张的承诺是"含 1 张金边"而不是"7 张"。 */
+function drawBatch(size, goldChance, guarantee){
+  const ids = [], goldIdx = [];
+  const picked = new Set();
+  let guard = 0;
+  while(ids.length < size && guard++ < 300){
+    const t = TRACKS[rnd(TRACKS.length)];
+    if(picked.has(t.id)) continue;      /* 同一批里不重复，避免出现两张一样的 */
+    picked.add(t.id);
+    ids.push(t.id);
+    if(Math.random() < goldChance) goldIdx.push(ids.length - 1);
+  }
+  if(guarantee && goldIdx.length === 0 && ids.length){
+    goldIdx.push(rnd(ids.length));
+  }
+  return { ids: ids, goldIdx: goldIdx };
 }
 
 function stockScreen(){
   return new Promise(resolve => {
-    const c2Lock = Game.day < 3, c3Lock = Game.day < 7;
-    const html = '<h3>今日进货</h3><p>第 ' + Game.day + ' 天 · 金币 <b style="color:var(--gold)">' + Game.coins + '</b></p>' +
-      '<button data-val="normal">普通进货 · 免费<br><span style="font-size:11px;opacity:.8">随机 5 张</span></button>' +
-      '<button data-val="fine" ' + (c2Lock?'disabled style="opacity:.4"':'') + '>精选 · 150 金币<br><span style="font-size:11px;opacity:.8">' + (c2Lock?'第 3 天解锁':'5 张 + 1 张指定情绪') + '</span></button>' +
-      '<button data-val="rare" ' + (c3Lock?'disabled style="opacity:.4"':'') + '>稀有 · 450 金币<br><span style="font-size:11px;opacity:.8">' + (c3Lock?'第 7 天解锁':'5 张 + 1 张 ★★ 以上') + '</span></button>';
+    const day = Game.day;
+    const bal = '<b style="color:var(--gold)">' + Game.coins + '</b>';
+    function row(id, disabled, extra){
+      const r = RESTOCK[id];
+      const note = r.note + (extra || '');
+      return '<button data-val="' + id + '"' + (disabled ? ' disabled style="opacity:.4"' : '') + '>' +
+        r.label + (r.cost ? ' · ' + r.cost + ' 金币' : ' · 免费') +
+        '<br><span style="font-size:11px;opacity:.8">' + note + '</span></button>';
+    }
+    /* 金边唱片是 v30 的新东西，第 1 天直接在文案里点明"更好看、更值钱"，
+       否则玩家抽到金边也不知道它意味着什么。 */
+    const goldTip = '<p style="font-size:11px;color:var(--gold);line-height:1.7;margin-bottom:14px">' +
+      '★ 金边唱片：CD 带金黄包边，满足客人需求时给更多金币</p>';
+    /* 护符生效提示：让玩家清楚知道"这一局我带了什么" */
+    let talTip = '';
+    if((Game.talismans || []).length){
+      talTip = '<p style="font-size:11px;color:#7cf5a0;line-height:1.7;margin-bottom:14px">' +
+        '本局护符：' + Game.talismans.map(function(id){
+          const t = TAL_BY_ID[id]; return t ? t.name : '';
+        }).filter(Boolean).join(' · ') + '</p>';
+    }
+    const html = '<h3>今日进货</h3><p>第 ' + day + ' 天 · 金币 ' + bal + '</p>' + goldTip + talTip +
+      row('normal', false) + row('fine', false) + row('rare', false);
     modal(html).then(async val => {
-      let cost = 0, bonus = null;
-      if(val === 'fine'){ cost = 150; bonus = 'mood'; }
-      if(val === 'rare'){ cost = 450; bonus = 'rare'; }
-      if(Game.coins < cost){ toast('金币不足，改为普通进货'); cost = 0; bonus = null; }
-      Game.coins -= cost; Game.dayExpense += cost; Game.stats.expense += cost;
-
-      /* 广告推广效果：投放期内每批进货额外赠送 1 张稀有唱片 */
-      if(Game.adBoost > 0){ bonus = bonus || 'ad'; }
-
-      /* 循环抽取直到满足配平条件 */
-      let finalInv = null, finalStories = null;
-      const storyPoolMaster = (window.STORIES || []).slice();
-      function makeBonus(list){
-        if(bonus === 'mood'){
-          const moods = MOODS[rnd(MOODS.length)];
-          const cand = TRACKS.filter(function(t){ return t.moods.indexOf(moods) >= 0; });
-          if(cand.length) list.push(cand[rnd(cand.length)].id);
-        } else if(bonus === 'rare' || bonus === 'ad'){
-          const cand = TRACKS.filter(function(t){ return t.rarity >= 2; });
-          if(cand.length) list.push(cand[rnd(cand.length)].id);
-        }
+      if(!RESTOCK[val]) val = 'normal';
+      let cfg = RESTOCK[val];
+      /* 金币不足自动降级：不要因为一次误点就把玩家卡在"没进货"的状态 */
+      if(Game.coins < cfg.cost){
+        toast('金币不足，改为普通进货');
+        cfg = RESTOCK.normal; val = 'normal';
       }
-      for(let attempt = 0; attempt < 300; attempt++){
-        const inv = [];
-        for(let i = 0; i < 5; i++) inv.push(TRACKS[rnd(TRACKS.length)].id);
-        makeBonus(inv);
+      Game.coins -= cfg.cost;
+      if(cfg.cost){
+        Game.dayExpense += cfg.cost;
+        Game.stats.expense += cfg.cost;
+      }
+
+      /* ── 循环抽取直到满足两个约束 ──
+         1) 基线配平（每天都要有牌可打）
+         2) 绿护符的强配平（若本局带了绿护符）
+         第 2 条命中率只有 34%，所以循环上限要给足；仍失败则退而用第 1 条，
+         并把绿护符标记为"已尽力"（不会崩，也不会卡住游戏）。 */
+      const wantAllServe = hasTal('jade');
+      const storyPoolMaster = (window.STORIES || []).slice();
+      let finalInv = null, finalGold = [], finalStories = null;
+      let allServeOk = !wantAllServe;
+      for(let attempt = 0; attempt < 400; attempt++){
+        const batch = drawBatch(cfg.count, cfg.goldChance, val === 'rare');
         /* 抽 5 个不重复故事 */
         const pool = storyPoolMaster.slice();
         const stories = [];
@@ -2820,28 +3507,42 @@ function stockScreen(){
           pool.splice(idx, 1);
         }
         if(stories.length < 5) continue;
-        if(checkMatch(inv.slice(0, 5), stories)){
-          finalInv = inv; finalStories = stories;
-          break;
+        const baseOk = checkMatch(batch.ids, stories);
+        if(!baseOk) continue;
+        if(wantAllServe && !checkAllServe(batch.ids, stories)){
+          /* 强条件没中：先记住这批作为兜底，继续重抽 */
+          if(!finalInv){ finalInv = batch.ids; finalGold = batch.goldIdx; finalStories = stories; }
+          continue;
         }
+        finalInv = batch.ids; finalGold = batch.goldIdx; finalStories = stories;
+        allServeOk = true;
+        break;
       }
-      /* 兜底：兜不住也存 */
+      /* 兜底：连基线都没中（理论概率极低），随便发一批保证能玩 */
       if(!finalInv){
-        finalInv = [];
-        for(let i = 0; i < 5; i++) finalInv.push(TRACKS[rnd(TRACKS.length)].id);
-        makeBonus(finalInv);
+        const batch = drawBatch(cfg.count, cfg.goldChance, val === 'rare');
+        finalInv = batch.ids; finalGold = batch.goldIdx;
         finalStories = [];
         const pool = storyPoolMaster.slice();
         for(let i = 0; i < 5; i++){ const idx = rnd(pool.length); finalStories.push(pool[idx]); pool.splice(idx,1); }
+        allServeOk = false;
       }
 
-      /* v19 修复：付费/广告赠送的那张唱片原被 slice(0,5) 丢弃，玩家花了钱却拿不到。
-         现在完整保留 6 张，多出的 1 张是额外选择。 */
+      /* 应用金边标记。先清旧的：本局换了一批货，上一批的金边不该留。 */
+      clearGoldMarks();
+      finalGold.forEach(function(i){
+        const t = getTrackById(finalInv[i]);
+        if(t) markGold(t);
+      });
+
       Game.inventory = finalInv.slice();
       Game.dayStories = finalStories;
       const drawn = finalInv.map(function(id){ return getTrackById(id); }).filter(Boolean);
       save();
       await showDrawScreen(drawn);
+      if(wantAllServe && !allServeOk){
+        toast('翠玉护符未能配出人人满意的牌面', 2400);
+      }
       resolve();
     });
   });
@@ -2869,9 +3570,13 @@ function showDrawScreen(drawn){
       const front = document.createElement('div'); front.className = 'draw-face draw-front';
       front.style.backgroundImage = 'url(' + getCoverCanvas(t, 200).toDataURL('image/jpeg', 0.85) + ')';
       inner.appendChild(back); inner.appendChild(front); card.appendChild(inner);
-      if (t.rarity >= 2) { const glow = document.createElement('div'); glow.className = 'draw-glow r' + t.rarity; card.appendChild(glow); }
+      /* v30：金边用专属的 gold 光晕（比 r2/r3 更亮更金），
+           并优先于稀有度光晕 —— 一张金边的 ★★★ 只会显示金光，
+           否则两圈光叠在一起反而看不清"金"这个信息。 */
+      if (isGold(t)) { const glow = document.createElement('div'); glow.className = 'draw-glow rg'; card.appendChild(glow); }
+      else if (t.rarity >= 2) { const glow = document.createElement('div'); glow.className = 'draw-glow r' + t.rarity; card.appendChild(glow); }
       grid.appendChild(card);
-      setTimeout(() => { card.classList.add('flipped'); }, 400 + i * 250);
+      setTimeout(() => { card.classList.add('flipped'); if(window.Sfx && Sfx.flip) Sfx.flip(i); }, 400 + i * 250);
     });
     setTimeout(() => { done.disabled = false; }, 400 + drawn.length * 250 + 200);
     /* PATCH v05b */ scr.classList.add('on');
@@ -2883,6 +3588,7 @@ function reportScreen(){
     const good = Game.daySoldList.filter(function(x){return x.result==='good'}).length;
     const total = Game.daySoldList.length;
     if(good === 5 && total === 5) Game._perfectDay = true;
+    const perfect = (good === 5 && total === 5);
 
     /* 今日收藏列表 */
     let colRows = '';
@@ -2891,135 +3597,235 @@ function reportScreen(){
       colRows = dayCol.map(function(tid){
         var t = getTrackById(tid);
         if(!t) return '';
-        return '<div class="rep-row"><span>《' + t.name + '》</span><b style="color:var(--gold)">' + t.genre + '</b></div>';
+        return '<div class="rep-row rep-anim" style="animation-delay:.5s"><span>《' + t.name + '》</span><b style="color:var(--gold)">' + t.genre + '</b></div>';
       }).join('');
     } else {
       colRows = '<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">今日未收藏任何唱片</div>';
     }
 
+    /* v30：今日售出明细 —— 把"这一天卖了什么、卖了多少钱"摊开。
+       结算页原本只有一个总数，玩家看不出金币从哪来；加了明细之后
+       "金边唱片确实更值钱"这件事才有地方可以被验证。 */
+    let soldRows = '';
+    if((Game.daySoldList || []).length){
+      soldRows = Game.daySoldList.map(function(x, i){
+        const nm = (x.track && x.track.name) ? x.track.name : '—';
+        const ic = x.result === 'good' ? '💖' : (x.result === 'ok' ? '🙂' : '💔');
+        const tag = x.gold ? ' <b style="color:var(--gold)">金边</b>' : '';
+        const pay = x.price > 0
+          ? '<b style="color:var(--gold)">+' + x.price + '</b>'
+          : '<b style="color:var(--muted)">0</b>';
+        return '<div class="rep-row rep-anim" style="animation-delay:' + (0.52 + i * 0.06).toFixed(2) + 's">' +
+          '<span>' + ic + ' 《' + nm + '》' + tag + '</span>' + pay + '</div>';
+      }).join('');
+    } else {
+      soldRows = '<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">今天没有成交</div>';
+    }
+
+    /* v30：护符结算提示。护符买了就一定会被消耗，所以要说清楚"它起作用了吗"。 */
+    let talRows = '';
+    if((Game.talismans || []).length){
+      talRows = '<div class="sep"></div><div class="h-sec">本局护符</div>' +
+        Game.talismans.map(function(id){
+          const t = TAL_BY_ID[id];
+          return t ? '<div class="rep-row rep-anim"><span>' + t.name + '</span><b style="color:#7cf5a0">已生效</b></div>' : '';
+        }).join('');
+    }
+
     $('scr-report').classList.add('on');
     $('scr-report').innerHTML = `
+      <div class="rep-burst"></div>
+      <div class="rep-sweep"><i></i></div>
       <div class="topbar"><h2>第 ${Game.day} 天 · 营业结束</h2></div>
       <div class="body-scroll">
-        <div style="text-align:center;padding:28px 0 18px">
-          <div style="font-size:11px;letter-spacing:.3em;color:var(--muted);margin-bottom:8px">TODAY REVENUE</div>
-          <div style="font-size:56px;font-weight:900;font-style:italic;color:var(--gold);text-shadow:3px 3px 0 rgba(255,209,102,.25);line-height:1">+${Game.dayIncome}</div>
-          <div style="font-size:11.5px;color:var(--muted);letter-spacing:.2em;margin-top:10px">今日营业额 · 金币</div>
+        <div style="text-align:center;padding:28px 0 18px;position:relative;z-index:2">
+          <div class="rep-head" style="font-size:11px;letter-spacing:.3em;color:var(--muted);margin-bottom:8px">TODAY REVENUE</div>
+          <div class="rep-num" id="repIncome" style="font-size:56px;font-weight:900;font-style:italic;color:var(--gold);text-shadow:3px 3px 0 rgba(255,209,102,.25);line-height:1">+0</div>
+          <div class="rep-lbl" style="font-size:11.5px;color:var(--muted);letter-spacing:.2em;margin-top:10px">今日营业额 · 金币</div>
+          ${perfect ? '<div class="rep-perfect" style="margin-top:14px;font-size:13.5px;font-weight:900;letter-spacing:.22em;color:var(--gold)">✦ 完美的一天 ✦</div>' : ''}
         </div>
         <div class="sep"></div>
-        <div class="h-sec">今日收藏</div>
-        ${colRows}
+        <div class="h-sec rep-anim" style="animation-delay:.44s">今日成交</div>
+        ${soldRows}
         <div class="sep"></div>
-        <div style="display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--muted);padding:10px 0">
+        <div class="h-sec rep-anim" style="animation-delay:.48s">今日收藏</div>
+        ${colRows}
+        ${talRows}
+        <div class="sep"></div>
+        <div class="rep-pop" style="display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--muted);padding:10px 0;animation-delay:.6s">
           <span>💖 满意 <b style="color:var(--magenta)">${good}</b></span>
           <span>📀 售出 <b style="color:var(--cyan)">${total}</b></span>
           <span>💰 余额 <b style="color:var(--gold)">${Game.coins}</b></span>
         </div>
-        <button class="menu-item" style="width:100%;margin-top:24px" id="repNext"><span class="idx">→</span><span class="tx">进入店铺管理</span></button>
+        <button class="menu-item rep-pop" style="width:100%;margin-top:24px;animation-delay:.7s" id="repNext"><span class="idx">→</span><span class="tx">进入店铺管理</span></button>
       </div>
     `;
+
+    /* 特效与音效：数字滚动 + 结算旋律。
+       两者同时起，节奏上"数字滚完刚好听到落袋那一下"。
+       为什么要等 120ms：先让弹入动画（repBurst / repNumIn）起来，
+       音效再进，否则视觉和听觉同时"炸"在 0ms 反而糊成一团。 */
+    if(window.rollNumber){
+      setTimeout(function(){
+        rollNumber($('repIncome'), Game.dayIncome, 760);
+      }, 160);
+    }
+    if(window.sfxSettle){
+      setTimeout(function(){ sfxSettle(good); }, 120);
+    }
+
     $('repNext').onclick = function(){
       $('scr-report').classList.remove('on');
+      resetReportFx();
       resolve();
     };
+
+    /* 清掉内联的 animation-delay，避免下次进结算页时继承上一轮的延迟。
+       （scr-report 的 innerHTML 每次都会被重写，理论上不需要；
+         但这行让"某个元素被复用"时也不会出问题，代价为零。） */
+    function resetReportFx(){}
   });
 }
 function shopManageScreen(){
   return new Promise(resolve => {
-    const shopCosts = [0, 0, 600, 1800, 4000, 9000];
-    const decorCosts = [0, 0, 500, 1500];
-    const rpCosts    = [0, 0, 400, 1200, 3000];
+    /* v30 全新店铺管理。
+       ── 旧版为什么"花了钱没感觉" ──
+       旧版把金币全砸在"店铺 Lv/唱片机 Lv/5 件家具各 3 级"上，
+       价格是 4000 / 9000 / 500~1800 这种量级，而日均营业额只有 ~500。
+       数学上就是"永远买不起"，所以玩家从没见过它生效 —— 等于没有升级。
+
+       ── 新版的两条花钱路径 ──
+       ① 室内装潢（永久）：4 套主题，1000~4800 金币，倍率 1.15~1.70。
+          回本周期按日均 500 算：1000/(500*0.15)≈13 天，3200/(500*0.48)≈13 天。
+          刻意让每一档回本周期都在 10~15 天，这样"买得起"和"值得买"同时成立。
+       ② 护符（仅下一局）：80 / 120 / 150 金币，单局增益实测
+          蓝 +45、黄 +50、绿 +90（见 tools/talisman-calib.js）。
+          绿护符增益最高所以最贵；蓝护符增益最低但有"兜底"的心理价值。
+          注意三者都**低于**自己的实测增益之外的期待值 —— 也就是说
+          护符不是稳赚的（黄 120 买 +50 是亏的），它的定价逻辑是
+          "花小钱买一局的确定性"，而不是"投资"。
+          这样金币才会被持续消耗，不会一路累积。 */
+
+    /* 主题卡片：同时展示色板，让"换装潢"在下单前就看得见长什么样 */
+    function themeCards(){
+      return '<div class="theme-grid">' + THEMES.map(function(t){
+        const own = hasTheme(t.id);
+        const cur = Game.theme === t.id;
+        const able = Game.coins >= t.cost;
+        const sw = t.sw.map(function(c){ return '<i style="background:' + c + '"></i>'; }).join('');
+        let btn;
+        if(cur) btn = '<button class="theme-btn" disabled>使用中</button>';
+        else if(own) btn = '<button class="theme-btn gd" data-use="' + t.id + '">换上这套</button>';
+        else btn = '<button class="theme-btn" data-buy="' + t.id + '"' + (able ? '' : ' disabled') + '>' +
+          (able ? '买下 · ' + t.cost : '金币不足 · ' + t.cost) + '</button>';
+        return '<div class="theme-card' + (own ? ' own' : '') + (cur ? ' cur' : '') + '">' +
+          (cur ? '<span class="tag-cur">使用中</span>' : '') +
+          '<div class="theme-sw">' + sw + '</div>' +
+          '<div class="theme-nm">' + t.name + '</div>' +
+          '<div style="font-size:10.5px;color:var(--muted);line-height:1.5;margin-top:5px">' + t.desc + '</div>' +
+          '<div class="theme-mt">' + t.tone + '</div>' +
+          btn +
+        '</div>';
+      }).join('') + '</div>';
+    }
+
+    /* 护符卡片：只写"它能做什么"，不写具体数值规则。
+       黄护符的 +10% 是刻意隐藏的（写出来玩法会退化成算术题）。 */
+    function talCards(){
+      return '<div class="tal-list">' + TALISMANS.map(function(t){
+        const owned = hasTal(t.id);
+        const able = Game.coins >= t.cost;
+        return '<div class="tal-card ' + t.cls + (owned ? ' own' : '') + '">' +
+          '<span class="tal-orb ' + t.cls + '"></span>' +
+          '<div class="tal-info"><div class="tal-nm">' + t.name + '</div>' +
+          '<div class="tal-ds">' + t.desc + '</div></div>' +
+          (owned
+            ? '<button class="tal-btn" disabled>已装备</button>'
+            : '<button class="tal-btn" data-tal="' + t.id + '"' + (able ? '' : ' disabled') + '>' +
+              (able ? '买下 · ' + t.cost : '金币不足') + '</button>') +
+        '</div>';
+      }).join('') + '</div>';
+    }
 
     function render(){
-      const shopUp = Game.shopLevel < 5;
-      const shopPrice = shopUp ? shopCosts[Game.shopLevel + 1] : 0;
-      const rpUp = Game.recordPlayerLevel < 4;
-      const rpPrice = rpUp ? rpCosts[Game.recordPlayerLevel + 1] : 0;
-      const decorNames = { poster:'海报墙', rug:'地毯', neon:'霓虹灯', sign:'招牌', sofa:'沙发' };
-
-      let decorRows = Object.keys(Game.decor).map(function(k){
-        const lv = Game.decor[k];
-        const can = lv < 3;
-        const price = can ? decorCosts[lv+1] : 0;
-        return '<div class="shop-item">' +
-          '<div class="shop-info"><div class="shop-name">' + decorNames[k] + '</div><div class="shop-lv">Lv.' + lv + ' / 3</div></div>' +
-          (can ? '<button class="shop-btn cy" data-decor="' + k + '">升级 · ' + price + '</button>' : '<span class="shop-max">已满级</span>') +
-        '</div>';
-      }).join('');
-
-      const adPrice = Game.day >= 15 ? 2000 : (Game.day >= 10 ? 800 : (Game.day >= 5 ? 300 : 0));
+      const ownedThemes = ownsThemeCount();
+      const equipped = Game.talismans || [];
+      let eqTip = '';
+      if(equipped.length){
+        eqTip = '<div class="h-sec">本局已装备</div><div style="font-size:12px;color:#7cf5a0;font-weight:800;' +
+          'padding:10px 12px;background:rgba(124,245,160,.08);border-left:3px solid #7cf5a0;line-height:1.8">' +
+          equipped.map(function(id){ return TAL_BY_ID[id] ? TAL_BY_ID[id].name : ''; }).filter(Boolean).join(' · ') +
+          '<div style="font-size:10.5px;color:var(--muted);font-weight:600;margin-top:4px">' +
+          '这些护符会在下一天开始时生效，当天结算后消耗</div></div>';
+      }
 
       $('scr-shop').classList.add('on');
       $('scr-shop').innerHTML = `
-        <div class="topbar"><button class="tbtn" id="shopBack">←</button><h2>店铺管理</h2><span style="color:var(--gold);font-weight:900;font-size:14px">${Game.coins} 金币</span></div>
-        <div class="body-scroll" style="padding:20px 20px calc(30px + env(safe-area-inset-bottom))">
-          <div class="h-sec">扩张</div>
-          <div class="shop-item">
-            <div class="shop-info"><div class="shop-name">店铺等级</div><div class="shop-lv">Lv.${Game.shopLevel} / 5 · 每日 5 位客人</div></div>
-            ${shopUp ? '<button class="shop-btn" id="upShop">升级 · ' + shopPrice + '</button>' : '<span class="shop-max">已满级</span>'}
+        <div class="topbar"><button class="tbtn" id="shopBack">←</button><h2>店铺管理</h2><span style="color:var(--gold);font-weight:900;font-size:14px" class="num">${Game.coins} 金币</span></div>
+        <div class="body-scroll" style="padding:18px 18px calc(30px + env(safe-area-inset-bottom))">
+          <div class="h-sec">室内装潢 · 永久生效（已拥有 ${ownedThemes}/${THEMES.length}）</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:10px">
+            换一套装潢会改变店内的灯光、配色与陈设，同时提高唱片的基准售价。
           </div>
-          <div class="shop-item">
-            <div class="shop-info"><div class="shop-name">唱片机</div><div class="shop-lv">Lv.${Game.recordPlayerLevel} / 4 · 试听 ${[0,15,30,30,30][Game.recordPlayerLevel]} 秒</div></div>
-            ${rpUp ? '<button class="shop-btn cy" id="upRp">升级 · ' + rpPrice + '</button>' : '<span class="shop-max">已满级</span>'}
+          ${themeCards()}
+
+          ${eqTip}
+          <div class="h-sec">护符 · 仅下一局生效</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:10px">
+            护符一局用完即失效，需要为新的一天再买一次。
           </div>
+          ${talCards()}
 
-          <div class="h-sec">装修</div>
-          ${decorRows}
-
-          <div class="h-sec">推广</div>
-          ${adPrice ? '<div class="shop-item"><div class="shop-info"><div class="shop-name">霓虹屏广告</div><div class="shop-lv">吸引稀有客人</div></div><button class="shop-btn gd" id="doAd">投放 · ' + adPrice + '</button></div>'
-            : '<div style="color:var(--muted);font-size:12.5px;padding:10px 0;text-align:center">第 5 天解锁</div>'}
-
-          <div style="margin-top:32px">
+          <div style="margin-top:30px">
             <button class="menu-item" style="width:100%" id="nextDay"><span class="idx">→</span><span class="tx">开始新的一天</span></button>
           </div>
         </div>
-        <style>
-          .shop-item{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;background:linear-gradient(100deg,rgba(255,255,255,.045),rgba(26,13,46,.92));border-left:3px solid var(--magenta);transform:skewX(-1.2deg)}
-          .shop-item>*{transform:skewX(1.2deg)}
-          .shop-info{flex:1;min-width:0}
-          .shop-name{font-size:15px;font-weight:800;letter-spacing:.04em;margin-bottom:4px}
-          .shop-lv{font-size:11px;color:var(--muted);letter-spacing:.1em}
-          .shop-btn{padding:10px 18px;border:none;background:var(--magenta);color:#fff;font-family:inherit;font-weight:800;font-size:12.5px;letter-spacing:.08em;cursor:pointer;transform:skewX(-6deg);box-shadow:0 0 14px rgba(255,46,136,.35);white-space:nowrap}
-          .shop-btn.cy{background:var(--cyan);color:#06222c;box-shadow:0 0 14px rgba(95,232,255,.35)}
-          .shop-btn.gd{background:var(--gold);color:#2a1a00;box-shadow:0 0 14px rgba(255,209,102,.35)}
-          .shop-btn:active{transform:skewX(-6deg) scale(.94)}
-          .shop-max{font-size:11px;color:var(--muted);letter-spacing:.12em;padding:6px 12px;border:1px dashed rgba(255,255,255,.2)}
-        </style>
       `;
 
-      const upShop = $('upShop');
-      if(upShop) upShop.onclick = function(){
-        if(Game.coins < shopPrice){ toast('金币不足'); return; }
-        Game.coins -= shopPrice; Game.shopLevel++; save(); render();
-        toast('店铺升级到 Lv.' + Game.shopLevel);
-      };
-      const upRp = $('upRp');
-      if(upRp) upRp.onclick = function(){
-        if(Game.coins < rpPrice){ toast('金币不足'); return; }
-        Game.coins -= rpPrice; Game.recordPlayerLevel++; save(); render();
-        toast('唱片机升级到 Lv.' + Game.recordPlayerLevel);
-      };
-      document.querySelectorAll('[data-decor]').forEach(function(b){
+      $('shopBack').onclick = function(){ $('scr-shop').classList.remove('on'); resolve(); };
+
+      document.querySelectorAll('[data-buy]').forEach(function(b){
         b.onclick = function(){
-          const k = b.getAttribute('data-decor');
-          const lv = Game.decor[k];
-          const price = decorCosts[lv+1];
-          if(Game.coins < price){ toast('金币不足'); return; }
-          Game.coins -= price; Game.decor[k]++; save(); render();
-          toast('装修升级！基准价提升');
+          const t = THEME_BY_ID[b.getAttribute('data-buy')];
+          if(!t || hasTheme(t.id)) return;
+          if(Game.coins < t.cost){ toast('金币不足'); return; }
+          Game.coins -= t.cost;
+          Game.stats.expense += t.cost;
+          Game.themes.push(t.id);
+          Game.theme = t.id;              /* 买完立刻换上，花钱马上看得见 */
+          applyShopTheme();
+          save(); render();
+          if(window.Sfx) Sfx.open();
+          toast('已换装：' + t.name + ' · 基准价 ' + t.tone);
         };
       });
-      const doAd = $('doAd');
-      if(doAd) doAd.onclick = function(){
-        if(Game.coins < adPrice){ toast('金币不足'); return; }
-        Game.coins -= adPrice; Game.adBoost = 3; Game._usedAd = true;
-        save(); render();
-        toast('广告投放成功');
-      };
+      document.querySelectorAll('[data-use]').forEach(function(b){
+        b.onclick = function(){
+          const t = THEME_BY_ID[b.getAttribute('data-use')];
+          if(!t || !hasTheme(t.id)) return;
+          Game.theme = t.id;
+          applyShopTheme();
+          save(); render();
+          if(window.Sfx) Sfx.click();
+          toast('已换上：' + t.name);
+        };
+      });
+      document.querySelectorAll('[data-tal]').forEach(function(b){
+        b.onclick = function(){
+          const t = TAL_BY_ID[b.getAttribute('data-tal')];
+          if(!t || hasTal(t.id)) return;
+          if(Game.coins < t.cost){ toast('金币不足'); return; }
+          Game.coins -= t.cost;
+          Game.stats.expense += t.cost;
+          Game.talismans.push(t.id);
+          save(); render();
+          if(window.Sfx) Sfx.success();
+          toast('已装备：' + t.name + '（仅下一局）');
+        };
+      });
+
       $('nextDay').onclick = function(){
         $('scr-shop').classList.remove('on');
-        if(Game.adBoost > 0) Game.adBoost--;
         resolve();
       };
     }
@@ -3038,11 +3844,15 @@ function openCollection(){
   } else {
     Game.collection.forEach(function(tid){
       const t = getTrackById(tid); if(!t) return;
+      const gold = isGold(t);
       const card = document.createElement('div');
-      card.className = 'inv-card' + (t.rarity === 3 ? ' r3' : t.rarity === 2 ? ' r2' : '');
+      card.className = 'inv-card' + (t.rarity === 3 ? ' r3' : t.rarity === 2 ? ' r2' : '') + (gold ? ' gold' : '');
       card.style.position = 'relative';
       card.dataset.tid = String(tid);
-      card.innerHTML = '<div class="inv-thumb"><img src="' + getCoverCanvas(t, 200).toDataURL('image/jpeg', 0.85) + '" alt="">' + (t.rarity > 1 ? '<div class="rbadge">' + '★'.repeat(t.rarity) + '</div>' : '') + '</div><div class="inv-info"><div class="nm">' + t.name + '</div><div class="tags"><span class="tag-pill genre">' + t.genre + '</span>' + t.moods.map(function(m){return '<span class="tag-pill mood">' + m + '</span>'}).join('') + '</div><div class="meta">' + t.bpm + ' BPM · 种子 ' + t.seed + '</div></div>' +
+      card.innerHTML = '<div class="inv-thumb"><img src="' + getCoverCanvas(t, 200).toDataURL('image/jpeg', 0.85) + '" alt="">' +
+        (t.rarity > 1 ? '<div class="rbadge">' + '★'.repeat(t.rarity) + '</div>' : '') +
+        (gold ? '<div class="gbadge">金边</div>' : '') +
+        '</div><div class="inv-info"><div class="nm">' + t.name + '</div><div class="tags"><span class="tag-pill genre">' + t.genre + '</span>' + t.moods.map(function(m){return '<span class="tag-pill mood">' + m + '</span>'}).join('') + '</div><div class="meta">' + t.bpm + ' BPM · 种子 ' + t.seed + '</div></div>' +
         '<button class="col-del" data-del="' + tid + '" title="移除" style="position:absolute;top:8px;right:8px;width:32px;height:32px;border:none;background:rgba(255,46,136,.55);color:#fff;font-size:18px;font-weight:800;cursor:pointer;z-index:20;line-height:1;padding:0">×</button>';
       list.appendChild(card);
     });
@@ -3314,6 +4124,10 @@ function loadDefaults(){
   Game.goodStories = [];
   Game.usedStories = [];
   Game._rareSold = 0;
+  /* v30：金边只在进货时按概率产生，开局送的 6 张一律不是金边。
+     清一下是为了防止"上一局的金边标记泄漏到新局"（resetGame 已清，
+     但点「重新开始」走的是 resetGame → loadDefaults 之外的路径时也要稳）。 */
+  clearGoldMarks();
 }
 
 async function gameLoop(gen){
@@ -3455,7 +4269,7 @@ if($('btnImport')) $('btnImport').onclick = ()=>{
   });
 };
 
-/* v28：「重新开始（清空存档）」
+/* v28/v30：「清除存档并重新开始」
    ── 原来错在哪 ──
    只调了 resetGame()，它把 inventory 清成 []，但：
      1) 没补初始库存 → 玩家无片可给客人
@@ -3464,36 +4278,549 @@ if($('btnImport')) $('btnImport').onclick = ()=>{
    从「暂停菜单 → 设置」走这条路时，玩家以为回到了游戏，
    实际上游戏卡在 openInventoryForGuest() 的 await 上，彻底无法推进。
 
-   现在改成：清数据 → 补初始库存 → 统一会话复位 → 回主菜单（不自动进局内）。
-   用户明确要求"清除缓存后应该直接重新开始游戏而不是返回游戏"，
-   但直接跳进局内会让玩家莫名其妙被塞进新一天；
-   这里落在主菜单并刷新存档状态，玩家点「开始游戏」即是全新一局。 */
+   ── v30 按用户要求改成"立刻重启" ──
+   用户：「设置中点击清除存档后游戏立刻重启」。
+   所以出口用 beginNewGame()（第 20.5 节的出口 B）而不是 leaveGameSession()：
+   它会 abort 掉旧会话 → 清屏 → 显式声明 game 音乐面 → 解锁暂停按钮
+   → Game.abort=false → save() → gameLoop(Game._gen)。
+
+   顺序必须是 reset → defaults → beginNewGame，不能颠倒：
+     · resetGame() 清 localStorage，若之后再 save() 会把旧数据写回去；
+     · loadDefaults() 必须补上初始金币和初始库存，
+       否则新循环第一天抽卡前 inventory 为空（虽无害，但角色面板会显示 0 张）；
+     · beginNewGame() 内部自己 save()，所以这里不需要再补一次。
+   注意 beginNewGame() 里 showScreen(null) 会顺手把设置页/暂停页关掉，
+   所以不需要额外 hideSettings()。 */
 $('btnReset').onclick = ()=>{
   modal(`
-    <h3>重新开始</h3>
-    <p>这会清空所有进度、收藏和成就。<br>确定吗？</p>
-    <button data-val="yes">确定清空</button>
+    <h3>清除存档并重新开始</h3>
+    <p>这会清空所有进度、收藏和成就，并<b>立刻开启新的一局</b>。<br>确定吗？</p>
+    <button data-val="yes">确定清空并重开</button>
     <button class="ghost" data-val="no">取消</button>
   `, { bypassPause: true }).then(v=>{
     if(v !== 'yes') return;
     /* 1) 清存档数据（含 localStorage），此时 Game.inventory = [] */
     resetGame();
-    /* 2) 补回初始金币与 6 张初始库存。
-          少了这一步，新局库存为空 → 客人无法交付 → 卡死。 */
+    /* 2) 补回初始金币与初始库存（新档基线） */
     loadDefaults();
-    /* 3) 统一会话复位：作废旧协程、解掉挂起的等待、清屏、回主菜单 */
-    leaveGameSession();
-    /* 4) 关掉设置页/弹窗残影，落盘一份干净的新档 */
-    save();
-    toast('已重置，点「开始游戏」开新档');
+    /* 3) 立刻重启：作废旧协程 → 清屏 → 回局内 → 开新日循环。
+          v28 的注释说"直接跳进局内会让玩家莫名其妙被塞进新一天"，
+          但用户明确要求立刻重启，且从「清除存档」进入新局语义清晰
+          （开新档 = 从第 1 天开始），因此采用出口 B。 */
+    beginNewGame();
+    toast('存档已清除，开始新的一局');
   });
 };
 
+/* =========================================================================
+   v30 新增块：防连点误触 / 结算特效与音效 / 新手教程。
+   集中在「启动」之前，因为它们要引用主流程里已定义好的东西
+   （showScreen / modal / showDrawScreen / Sfx / RecView / Game）。
+   ========================================================================= */
+
+/* ------------------------- 27.1 防连点误触 -------------------------
+   ── 症状 ──
+   连点两下「交给客人」：第一下关掉唱片界面，第二下穿透到屏幕下方那个
+   此刻刚露出来的按钮上。表现就是"点快了会跳到下一个界面"。
+
+   ── 为什么不用"给每个按钮加冷却" ──
+   本文件可点元素上百个，逐个加既容易漏（以后新加的按钮忘了加），
+   也必然误伤"同一按钮连点两次"这种**正常**操作 ——
+   对话要连点推进、抽卡后要连点继续，这些不该被拦。
+
+   ── 采用方案：界面切换期的输入锁 ──
+   核心想法是"界面正在动的时候不接受点击"：
+     · 每次 showScreen / 弹窗 / 抽卡页打开 → 上一把**很短**的锁
+     · 锁 = 给 body 加 .input-lock，使所有顶层元素 pointer-events:none
+     · 锁只覆盖切换那一小段（150~280ms），不是页面存在期间常驻
+   三个好处：
+     ✓ 穿透被物理阻断 —— 事件根本没落到元素上，
+       与 document 上那堆捕获监听器的注册顺序完全无关
+     ✓ 正常操作不受影响 —— 单次点击落在开锁之后；同一按钮连点也只在
+       **真的发生界面切换**时才被拦，且拦的时间短于人的连续两击间隔
+     ✓ 不会因为"漏加某个按钮"而失效 —— 锁的是容器，不是按钮清单
+
+   ── 为什么把 #dlg 排除在外 ──
+   #dlg 用 pointerdown 推进对话，且常常与屏幕同时存在。
+   一起锁死会让"点一下跳过打字机"失效，反而制造阻塞感。 */
+const INPUT_LOCK_MS = 220;
+let _lockTimer = null;
+function lockInput(ms){
+  if(!document.body) return;
+  document.body.classList.add('input-lock');
+  if(_lockTimer) clearTimeout(_lockTimer);
+  _lockTimer = setTimeout(function(){
+    document.body.classList.remove('input-lock');
+    _lockTimer = null;
+  }, ms || INPUT_LOCK_MS);
+}
+function unlockInputNow(){
+  if(_lockTimer){ clearTimeout(_lockTimer); _lockTimer = null; }
+  if(document.body) document.body.classList.remove('input-lock');
+}
+window.lockInput = lockInput;
+window.unlockInputNow = unlockInputNow;
+
+/* .input-lock 会连 #dlg 一起冻住，补一条更高优先级的规则放开它。
+   注意 #toast 保持不可点（它本来就是 pointer-events:none 的提示）。 */
+(function injectInputLockStyle(){
+  const st = document.createElement('style');
+  st.textContent =
+    'body.input-lock>*{pointer-events:none!important}' +
+    'body.input-lock #dlg,body.input-lock #dlg *{pointer-events:auto!important}';
+  document.head.appendChild(st);
+})();
+
+/* 给 showScreen 挂钩子：真正发生换屏时才上锁。
+   判据用"本次 id 与上次不同"，而不是"当前屏没变" ——
+   像 openCollection() 会先 showScreen(null) 再 showScreen('scr-collection')，
+   两次都该各锁一次（中间那一瞬正是穿透最容易发生的时候）。 */
+let _lastShownScreen = null;
+(function hookShowScreen(){
+  const orig = window.showScreen;
+  if(typeof orig !== 'function') return;
+  window.showScreen = function(id){
+    const nextKey = (id === undefined) ? null : id;
+    const changed = (nextKey !== _lastShownScreen);
+    _lastShownScreen = nextKey;
+    const r = orig.apply(this, arguments);
+    if(changed) lockInput(nextKey === null ? 150 : INPUT_LOCK_MS);
+    return r;
+  };
+})();
+
+/* 弹窗与抽卡页不走 showScreen，单独上锁。 */
+(function hookModalLock(){
+  const om = window.modal;
+  if(typeof om === 'function'){
+    window.modal = function(){
+      lockInput(INPUT_LOCK_MS);
+      return om.apply(this, arguments);
+    };
+  }
+  const od = window.showDrawScreen;
+  if(typeof od === 'function'){
+    window.showDrawScreen = function(){
+      lockInput(280);
+      return od.apply(this, arguments);
+    };
+  }
+})();
+
+/* 「收入库存」在翻牌动画结束前是 disabled 的，但双击的第二下可能正好
+   落在"刚解禁"的那一瞬。这里给按钮加一道 320ms 自我锁 ——
+   作用域只在按钮上，不影响别处操作。 */
+(function hardenDrawDone(){
+  document.addEventListener('click', function(e){
+    const t = e.target;
+    if(!t || !t.closest) return;
+    const b = t.closest('#drawDone');
+    if(!b) return;
+    if(b._armed){ e.stopPropagation(); e.preventDefault(); return; }
+    b._armed = true;
+    setTimeout(function(){ b._armed = false; }, 320);
+  }, true);
+})();
+
+/* ------------------------- 27.2 结算特效与结算音效 ------------------------- */
+/* 结算音效：一段"翻账本 → 数金币 → 落袋"的 8bit 小旋律。
+   上行音阶的长度跟当天满意人数挂钩，所以"今天做得越好，收尾越漂亮"。
+   复用 window.Sfx（内部走 AudioEngine 的方波合成），不新建音频上下文。 */
+function sfxSettle(goodCount){
+  if(!window.Sfx) return;
+  const S = window.Sfx;
+  if(!S._play) return;
+  try{
+    /* 前奏两下三角波，像翻页 / 拨算盘 */
+    S._play(392, 0.06, 0.34, 'triangle');
+    setTimeout(function(){ S._play(523, 0.06, 0.34, 'triangle'); }, 92);
+    const up = goodCount >= 5 ? [523,659,784,1047,1319]
+             : goodCount >= 3 ? [523,659,784,1047]
+             : goodCount >= 1 ? [440,523,659]
+             : [349,440];
+    up.forEach(function(f, k){
+      setTimeout(function(){ S._play(f, 0.10, 0.44, 'square'); }, 205 + k * 78);
+    });
+    const tail = 205 + up.length * 78 + 40;
+    setTimeout(function(){ S._play(1568, 0.07, 0.32, 'square'); }, tail);
+    setTimeout(function(){ S._play(196, 0.20, 0.30, 'triangle'); }, tail + 72);
+    /* 完美一天：再加一串上行铃音，与页面上的金色爆闪同步 */
+    if(goodCount >= 5){
+      [2093, 2637, 2093, 1568].forEach(function(f, k){
+        setTimeout(function(){ S._play(f, 0.06, 0.26, 'square'); }, tail + 185 + k * 70);
+      });
+    }
+  }catch(e){}
+}
+window.sfxSettle = sfxSettle;
+
+/* 营业额数字滚动。为什么值得做：静态贴一个大数字很难让人感到"今天赚到了"，
+   滚动 + 每跳一档一个极短高音，能把结算这段"演"出来。 */
+function rollNumber(el, target, ms){
+  if(!el) return;
+  const dur = ms || 720;
+  const t0 = performance.now();
+  let lastBlip = 0;
+  function step(){
+    const p = Math.min(1, (performance.now() - t0) / dur);
+    /* easeOutCubic：先快后慢，收尾"停住"更有分量 */
+    const e = 1 - Math.pow(1 - p, 3);
+    const v = Math.round(target * e);
+    el.textContent = '+' + v;
+    if(p < 1){
+      const now = performance.now();
+      if(now - lastBlip > 58 && window.Sfx && Sfx._play){
+        lastBlip = now;
+        Sfx._play(880 + Math.random() * 280, 0.018, 0.15, 'square');
+      }
+      requestAnimationFrame(step);
+    } else {
+      el.textContent = '+' + target;
+    }
+  }
+  step();
+}
+window.rollNumber = rollNumber;
+
+/* ------------------------- 27.3 新手教程 -------------------------
+   ── 需求 ──
+   在"第一次开店之前"（第一天抽库存之前），用对话 + 演示教会：
+     1) 与人对话
+     2) 根据需求去看库存
+     3) 查看光碟建模 / 试听音乐，决定交付哪一张
+
+   ── 取舍一：复用真实流程，而不是写一套独立演出 ──
+   一开始想的是"单独写一段教学脚本让玩家照着点"。那样有两个隐患：
+     · 教学脚本永远和真实玩法有细微差异，教出来的操作到正片会失效
+     · "等玩家点库存卡片""等玩家按交付"需要一整套可取消的 Promise，
+       一旦和暂停 / 返回主菜单交互就极易留下死锁（v28 刚修过同类问题）
+   所以改成**在真实流程上贴教练条**：教程跑的就是 serveOneGuest 本身。
+   与正片只有 4 个耦合点（serveOneGuest 里 3 个 + runOneDay 里 1 个），
+   全部形如 if(Tutorial.active) ... ，教程未激活时零行为变化。
+
+   ── 取舍二：为什么教程里把"客人需求"显性化 ──
+   正片里需求要靠对话话头揣摩（"要听了会笑的"），这本身是玩法。
+   但教程的目标是教**操作**。第一次就让玩家在 9 句对话里猜需求，
+   他卡住的是"我不知道该干什么"而不是"我不会点"。
+   所以教程期间额外挂 #tutDemand 面板，教程一结束永久隐藏。
+
+   ── 预设小剧情 ──
+   客人「修收音机的老人」，需求：爵士 / 宁静·温暖。
+   三张演示唱片分别对应 good / ok / bad，"按需求挑"会立刻得到正反馈。
+   万一挑错，教程会讲清**为什么**不对并让他免费重挑一次 ——
+   "交错了"本身就是最有价值的一课，不该被一句安慰带过。 */
+
+/* 教程演示唱片，固定 id 保证每次教学结果一致（已用 judge 实测）：
+   #4  静止木吉他 · 爵士 · 希望/温暖 · ★★ → 风格+氛围都中 = good
+   #7  白噪列车   · 爵士 · 无重合        · ★  → 只有风格中  = ok
+   #2  琥珀房间   · 摇滚 · 无重合        · ★  → 都不中      = bad */
+const TUT_GOOD_ID = 4, TUT_OK_ID = 7, TUT_BAD_ID = 2;
+const TUT_DEMO_IDS = [TUT_GOOD_ID, TUT_OK_ID, TUT_BAD_ID];
+
+const TUT_STORY = {
+  id: '__tutorial_radio__',
+  title: '修收音机的老人',
+  wants: { moods: ['宁静','温暖'], genres: ['爵士'] },
+  lines: [
+    ['g','（推门进来，把一台旧收音机轻轻放在柜台上）……老板，我不太懂唱片。'],
+    ['m','您说。'],
+    ['g','我老伴走了三年。她以前总在厨房开着收音机，一边听一边哼。那台机器上周坏了，修不回来了。'],
+    ['m','……'],
+    ['g','我就想问问，声音能不能换个东西留下来。唱片能吗？'],
+    ['m','能。您还记得她常听的是什么吗？'],
+    ['g','我说不上名字。就是那种……慢慢悠悠的，有萨克斯的，听着让人心里安静下来的。'],
+    ['m','那就是爵士。要让人"安静"又"暖和"的那种，对吧。'],
+    ['g','（点头）对，就是这两个字。安静，暖和。']
+  ],
+  endings: {
+    good: '（把唱片抱在怀里，很久没说话）……就是这个。谢谢你，老板。',
+    ok:   '（听完，慢慢点头）嗯，是这个调子。我拿回去试试。',
+    bad:  '（愣了一会儿，轻轻把唱片推回来）不是这个……太吵了，她不会喜欢。'
+  }
+};
+
+const TUTORIAL_KEY = 'record_shop_tutorial_v1';
+function tutorialDone(){ try{ return localStorage.getItem(TUTORIAL_KEY) === '1'; }catch(e){ return false; } }
+function markTutorialDone(){ try{ localStorage.setItem(TUTORIAL_KEY, '1'); }catch(e){} }
+
+/* -------- 教练条 -------- */
+const Coach = {
+  steps: [], idx: 0, _t: null, _raf: null, _resolveTarget: null,
+  init(){
+    const el = $('coach');
+    if(!el || el._bound) return;
+    el._bound = true;
+    const skip = $('coachSkip');
+    if(skip) skip.onclick = function(){ Tutorial.abort(); };
+  },
+  show(steps){
+    this.init();
+    this.steps = steps || [];
+    this.idx = 0;
+    const el = $('coach');
+    if(el) el.classList.add('on');
+    this.render();
+    if(window.Sfx && Sfx.open) try{ Sfx.open(); }catch(e){}
+  },
+  /* 换整组步骤（跳到新阶段） */
+  set(steps){ this.show(steps); },
+  /* 在同组步骤里推进一格。等 90ms 让界面先稳定，
+     否则"高亮库存第一张卡"会在卡片还没渲染出来时算到 (0,0)。 */
+  next(){
+    if(!this.steps.length) return;
+    if(this.idx >= this.steps.length - 1) return;
+    this.idx++;
+    const self = this;
+    clearTimeout(this._t);
+    this._t = setTimeout(function(){ self.render(); }, 90);
+  },
+  render(){
+    const s = this.steps[this.idx];
+    if(!s) return;
+    const ic = $('coachIc'), tx = $('coachTx'), dots = $('coachDots');
+    if(ic) ic.textContent = s.ic || '📖';
+    /* 文案里用 **粗体** 标出要点的名字，渲染成下划线强调 */
+    if(tx) tx.innerHTML = String(s.text).replace(/\*\*(.+?)\*\*/g, '<u>$1</u>') +
+      (s.sub ? '<small>' + s.sub + '</small>' : '');
+    if(dots){
+      dots.innerHTML = this.steps.map(function(_, k){
+        return '<i class="' + (k < Coach.idx ? 'done' : (k === Coach.idx ? 'cur' : '')) + '"></i>';
+      }).join('');
+    }
+    this.highlight(s.target);
+  },
+  /* 高亮：用 fixed 定位的方框套住目标。
+     目标可以是函数（用于每次重建 DOM 的元素），所以每帧重算位置，
+     避免玩家滚动或换屏后框跑偏。 */
+  highlight(target){
+    const hi = $('coachHi');
+    if(!hi) return;
+    this._resolveTarget = (typeof target === 'function') ? target
+      : (target ? function(){ return document.querySelector(target); } : null);
+    if(!this._resolveTarget){ hi.classList.remove('on'); this._stopTick(); return; }
+    this._tick();
+  },
+  _tick(){
+    const self = this;
+    this._stopTick();
+    let frames = 0;
+    function loop(){
+      const hi = $('coachHi');
+      if(!hi){ self._raf = null; return; }
+      let node = null;
+      try{ node = self._resolveTarget ? self._resolveTarget() : null; }catch(e){ node = null; }
+      if(!node){
+        hi.classList.remove('on');
+      } else {
+        const r = node.getBoundingClientRect();
+        if(r.width < 2 || r.height < 2 || r.bottom < 0 || r.top > window.innerHeight){
+          hi.classList.remove('on');
+        } else {
+          const pad = 7;
+          hi.style.left = (r.left - pad) + 'px';
+          hi.style.top = (r.top - pad) + 'px';
+          hi.style.width = (r.width + pad * 2) + 'px';
+          hi.style.height = (r.height + pad * 2) + 'px';
+          hi.classList.add('on');
+        }
+      }
+      frames++;
+      /* 跑约 6 秒就够（覆盖换屏动画 + 卡片渲染），之后停下省电；
+         需要时由 highlight() 重新启动。 */
+      if(frames < 360) self._raf = requestAnimationFrame(loop);
+      else self._raf = null;
+    }
+    loop();
+  },
+  _stopTick(){ if(this._raf){ cancelAnimationFrame(this._raf); this._raf = null; } },
+  hide(){
+    clearTimeout(this._t);
+    this._stopTick();
+    this._resolveTarget = null;
+    const el = $('coach'); if(el) el.classList.remove('on');
+    const hi = $('coachHi'); if(hi) hi.classList.remove('on');
+  }
+};
+window.Coach = Coach;
+
+/* -------- 需求面板（仅教程期间出现） -------- */
+const TutDemand = {
+  show(story){
+    const d = $('tutDemand');
+    if(!d || !story) return;
+    const w = story.wants || {};
+    d.innerHTML = '<div class="td-t">客人的需求</div>' +
+      '<div class="td-r"><span>风格</span>' + (w.genres || []).join(' / ') + '</div>' +
+      '<div class="td-r"><span>氛围</span>' + (w.moods || []).join(' / ') + '</div>';
+    d.classList.add('on');
+  },
+  hide(){ const d = $('tutDemand'); if(d) d.classList.remove('on'); }
+};
+
+/* -------- 教程主体 -------- */
+const Tutorial = {
+  active: false,
+  _retried: false,
+
+  /* 该不该跑：没看过教程、且现在是第 1 天。
+     只要跑过一次就落一个独立的 localStorage 标记 ——
+     它比"单局存档"更持久，所以换档、清档之后也不会再念一遍。 */
+  shouldRun(){
+    if(tutorialDone()) return false;
+    return Game.day === 1;
+  },
+
+  abort(){
+    if(!this.active) return;
+    this.end();
+    toast('已跳过教程，开始正常营业');
+  },
+
+  end(){
+    if(!this.active){
+      Coach.hide(); TutDemand.hide(); unlockInputNow();
+      return;
+    }
+    this.active = false;
+    Game._tutorialDay = false;
+    Coach.hide();
+    TutDemand.hide();
+    unlockInputNow();
+    markTutorialDone();
+    save();
+  },
+
+  /* 把这一天布置成"教程日"。
+     关键：把状态摆成和 stockScreen() 的产出**完全同构**
+     （inventory / dayStories / _dayInProgress / 当日统计清零），
+     这样 canResumeDay() 会返回 true，runOneDay 就会跳过抽卡、
+     也不重置统计 —— 后面的接待、结算、店铺管理一行都不用改。 */
+  prepareDay(){
+    this.active = true;
+    this._retried = false;
+    Game.guestsToday = 0;
+    Game.daySoldList = [];
+    Game.dayIncome = 0; Game.dayExpense = 0;
+    Game._dayMoods = new Set(); Game._dayGood = 0;
+    Game.dayCollected = [];
+    Game.dayStories = [TUT_STORY, TUT_STORY, TUT_STORY, TUT_STORY, TUT_STORY];
+    Game._tutorialDay = true;
+    clearGoldMarks();
+    Game.inventory = TUT_DEMO_IDS.slice();
+    Game._dayInProgress = true;
+    /* 立刻标记"已看过"。这样玩家中途返回主菜单、下次进来是**接着**这一天，
+       而不是从教程开头重念一遍（重念会和已推进的 guestsToday 打架）。 */
+    markTutorialDone();
+    save();
+    Coach.show([
+      { ic:'📖', text:'欢迎来到你的**唱片店**。第一天，我们慢一点走。',
+        sub:'右上角随时可以跳过，跳过之后就是正常营业', target:null },
+      { ic:'💬', text:'客人马上推门。**点屏幕任意位置**可以让对话往下走。',
+        sub:'字还没打完时点一下 = 立刻显示整句；再点一下 = 下一句', target:'#dlg' }
+    ]);
+  },
+
+  /* 中途退出后又回到教程日：把教练条接回来（此时通常已经过了对话阶段） */
+  resumeCoach(){
+    if(this.active) return;
+    this.active = true;
+    this._retried = false;
+    Game._tutorialDay = true;
+    TutDemand.show(TUT_STORY);
+    this.enterTutorialGuest = true;
+    this.beforeInventory();
+  },
+
+  /* ---- 以下四个是 serveOneGuest / runOneDay 会调用的解说点 ---- */
+
+  guestEnter(){
+    if(!this.active) return;
+    Coach.set([
+      { ic:'👤', text:'客人进来了。**先听他说完** —— 他的需求藏在话里。',
+        sub:'看完对话，右边会列出他要的风格和氛围', target:'#dlg' },
+      { ic:'🎯', text:'记下这两条：**风格** 和 **氛围**。',
+        sub:'待会儿挑唱片，就是拿这两条去对', target:'#tutDemand' }
+    ]);
+    TutDemand.show(TUT_STORY);
+  },
+
+  beforeInventory(){
+    if(!this.active) return;
+    Coach.set([
+      { ic:'💿', text:'对话结束，现在**去看库存**。',
+        sub:'店里能给的唱片都在这个列表里', target:'#scr-inv' },
+      { ic:'🔍', text:'拿客人的**风格**和**氛围**，一张张对过去。',
+        sub:'都合得上 → 最合适；只合一半 → 勉强；都不合 → 客人会失望',
+        target: function(){ return document.querySelector('#invGrid .inv-card'); } }
+    ]);
+    TutDemand.show(TUT_STORY);
+  },
+
+  beforeRecord(){
+    if(!this.active) return;
+    Coach.set([
+      { ic:'📀', text:'看标签还不够，**点「试听」听一遍**再决定。',
+        sub:'同一张唱片永远是同一首歌；也可以拖动转一转、双击翻个面', target:'#recListen' },
+      { ic:'▶', text:'不行就**点左上角 ✕ 回去换一张**；觉得行，就点 **交给客人**。',
+        sub:'三张里只有一张是完全合适的', target:'#recGive' }
+    ]);
+  },
+
+  /* 玩家交错了：讲清原因 + 让他免费重挑一次。
+     这是整个教程里信息量最大的一步，所以不做成"一句安慰"，
+     而是把判定讲明白（风格中没中 / 氛围中没中）。 */
+  async retryCoach(j){
+    if(!this.active) return;
+    let why;
+    if(j.genreHit && j.moodHits === 0){
+      why = '**风格对了，但氛围不对**。客人要的是"安静、暖和"，这张不是那个感觉。';
+    } else if(!j.genreHit && j.moodHits > 0){
+      why = '**氛围沾了点边，但风格不对**。客人说"慢慢悠悠、有萨克斯" —— 那是爵士。';
+    } else {
+      why = '**方向偏了**。风格和氛围都没对上他要的那两条。';
+    }
+    Coach.set([
+      { ic:'💡', text:'客人没要这张。' + why,
+        sub:'没关系，回库存再挑一张 —— 这一单不收你钱', target:null },
+      { ic:'👀', text:'再对一次：**爵士**、而且是**希望 / 温暖**那种氛围的那张，才是他要的。',
+        sub:'挑好之后还是老流程：试听 → 交给客人',
+        target: function(){ return document.querySelector('#invGrid .inv-card'); } }
+    ]);
+    if(window.Sfx && Sfx.cancel) try{ Sfx.cancel(); }catch(e){}
+    await wait(1100);
+  },
+
+  /* 交付成功后的收尾解说 */
+  deliveredGood(){
+    if(!this.active) return;
+    Coach.set([
+      { ic:'✅', text:'**就是这样**：听需求 → 看库存 → 试听 → 交付。',
+        sub:'以后每位客人都走这四步', target:null },
+      { ic:'🎉', text:'第一单做成了。**今天先到这里**，去看看营业结算吧。',
+        sub:'结算后可以换装潢、买护符、进货 —— 那些是给明天做的准备', target:null }
+    ]);
+  }
+};
+window.Tutorial = Tutorial;
+
+/* ------------------------- 27.4 教程日的收尾 -------------------------
+   runOneDay 在教程服务完那 1 位客人之后照常走 reportScreen →
+   shopManageScreen → day++。这里只负责在这条路的**尾部**补两件事：
+     1) 让教练条说一句"今天先到这里"
+     2) 把 _tutorialDay 落回 false，否则明天也会只服务 1 位客人
+   之所以不塞进 runOneDay，是因为那段代码每天都会走，
+   而这两件事只在第 1 天需要 —— 放在这里读起来意图更清楚。 */
+
 /* ------------------------- 27. 启动 ------------------------- */
 function boot(){
+  /* v30：读档必须排在 initThree() 之前。
+     原因：buildShopScene() 现在按 Game.theme 决定整间店的灯光/配色/陈设。
+     如果先建场景再读档，玩家每次进游戏看到的第一眼都是默认霓虹店，
+     要等下一次切场景才变 —— 存档里的装潢"不生效"是很明显的 bug。
+     旧版没有这个顺序依赖（场景写死），所以原来是 initThree() 打头。 */
+  load();
   initThree();
   onResize();
-  load();
   refreshSaveInfo();
 
   /* v21：音频解锁。浏览器自动播放策略要求必须有用户手势，
@@ -3529,14 +4856,18 @@ function boot(){
     document.removeEventListener('pointerdown', once);
   }, { once:true });
 
-/* PATCH v09 自动加载 */
+/* PATCH v09 自动加载
+   v30：这段原本在 boot() 里再 load() 一次。现在 boot() 开头已经读过档，
+   再读一次纯属重复；但因为读档会影响"该建哪套装潢"，这里保留一段
+   兜底：如果发现当前场景的主题和存档不一致，重建一次。
+   注意不能无条件 applyShopTheme() —— 那会在每次启动时多建一整间店。 */
 (function(){
   try{
-    var saved = localStorage.getItem('record_shop_save_v04');
-    if(saved){
-      load();
-      console.log('[自动存档] 已恢复 第 ' + Game.day + ' 天');
-    }
+    if(!hasSave()) return;
+    const want = (typeof Game !== 'undefined' && Game.theme) ? Game.theme : 'neon';
+    const nowScene = (shopScene && shopScene.userData && shopScene.userData.themeId);
+    if(nowScene !== want) applyShopTheme();
+    console.log('[自动存档] 已恢复 第 ' + Game.day + ' 天 · 装潢 ' + themeDef(Game.theme).name);
   }catch(e){ console.warn('自动加载失败', e); }
 })();
 }
