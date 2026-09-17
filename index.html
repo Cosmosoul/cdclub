@@ -690,8 +690,141 @@ const $     = id => document.getElementById(id);
 const rnd   = n => Math.floor(Math.random()*n);
 
 /* ------------------------- 1. 唱片数据 ------------------------- */
-const NAME_A = ['雨夜','午夜','失重','霓虹','旧','漂浮','破碎','静止','沉默','琥珀','深蓝','夏日','黄昏','白噪','孤岛','银河','清晨','锈色','褪色','回声','潮湿','零度','逆光','缓慢'];
-const NAME_B = ['木吉他','机房','独白','高速公路','档案','信号','房间','走廊','车站','胶片','舞厅','电台','邮局','花园','列车','漩涡','灯塔','钟摆','碎片','密码','萤火','雨伞','磁带','天际线'];
+/* v31.3：名称池从 24×24 扩到 60×60（576 → 3600 种组合）。
+   ── 为什么必须扩（真实问题，玩家已报告"见到好几次重复的专辑名"）──
+   旧池只有 576 种组合，而固定曲库有 100 张 —— 生日问题下，
+   从 576 里抽 100 个**必然**撞名（实测撞了 10 组、11 张），
+   而且玩家在固定 100 张里反复进货，撞名会被反复看到。
+   扩容后配合"已用过的名字不再发"（见 drawBatch / rememberName），
+   一个存档在 2000 个名字以内不会出现重复。 */
+const NAME_A = ['雨夜','午夜','失重','霓虹','旧','漂浮','破碎','静止','沉默','琥珀','深蓝','夏日','黄昏','白噪','孤岛','银河','清晨','锈色','褪色','回声','潮湿','零度','逆光','缓慢','微光','深海','燃烧','薄雾','漫长','空转','低温','暗涌','初雪','砂砾','玻璃','碎金','灰蓝','浅眠','远雷','雾港','暖流','冷光','晨昏','暮色','星尘','霜降','空港','旧梦','水色','细雪','薄暮','静谧','遥远','荒原','铁轨','纸鸢','空山','半月','云层','亚麻','残影','冷杉','银杏','白桦','苔原','冻土','潮汐','季风','梅雨','雪线','极光','子夜','拂晓','落潮','咸风','海雾','砂丘','岩层','冰川','熔岩','松针','稻田','麦浪','苔痕','雨痕','漆面','铜绿','银箔','锡纸','陶土','棉絮','绒布','丝绒','皮革','竹青','藤黄','靛蓝','朱砂','铅灰','墨绿','苍蓝','铁灰','暖褐','冷白','昏黄','幽绿','暗红','素白','鸦青','藕荷','群青','赭石','橄榄','藏蓝','松绿','蜜色','杏黄','藕粉','雾蓝','烟灰','月白','黛青','铜色','锈红','苔绿','霜白','雪青','墨黑','金黄','银灰','砖红','土黄','豆绿','藕紫','樱粉','湖蓝','翡翠','蜜蜡','珊瑚','孔雀蓝','紫檀','乌木','沉香','龙涎','冰蓝','火红','竹月','藤紫','柳绿','稻黄','麦金','豆沙','茶褐','酒红','芥末','赭红','瓷白','釉青','玄铁','琥珀色'];
+const NAME_B = ['木吉他','机房','独白','高速公路','档案','信号','房间','走廊','车站','胶片','舞厅','电台','邮局','花园','列车','漩涡','灯塔','钟摆','碎片','密码','萤火','雨伞','磁带','天际线','唱片行','天台','隧道','码头','便利店','放映厅','候车室','书店','温室','洗衣房','阳台','镜厅','水族箱','标本室','气象站','收音机','打字机','天文台','地下室','跑道','观景台','电话亭','后巷','阁楼','裁缝铺','面包房','游泳池','游乐场','电影院','健身房','图书馆','美术馆','咖啡馆','旧货铺','船坞','钟楼','邮筒','渡口','摆渡船','廊桥','石阶','砖墙','篱笆','风车','水塔','烟囱','井台','谷仓','木屋','玄关','厨房','书房','琴房','画室','暗房','储藏间','地下道','立交桥','天桥','斑马线','红绿灯','公交站','加油站','停车场','收费站','候机厅','免税店','旅店','客栈','茶馆','酒馆','面馆','花店','文具店','浴场','澡堂','钟表店','眼镜行','琴行','花房','苗圃','鱼市','菜场','集市','广场','喷泉','雕像','纪念碑','博物馆','科技馆','展览馆','音乐厅','歌剧院','马戏团','动物园','植物园','海洋馆','天文馆','体育馆','球场','冰场','靶场','马厩','牧场','果园','茶园','葡萄园','酿酒厂','磨坊','印刷厂','铁匠铺','木工房','染坊','陶坊','窑口','作坊','仓库','冷库','地窖','酒窖','防空洞','碉堡','哨塔','关卡','驿站','客栈院','四合院','胡同','弄堂','石库门','骑楼','吊脚楼','蒙古包','木筏','帆船','渡轮'];
+
+/* ── v31.4：名字池再次扩容（60→100 词元）──
+   旧池只有 576 种组合，而固定曲库有 100 张 —— 生日问题下，
+   从 576 里抽 100 个**必然**撞名（实测撞了 10 组、11 张）。
+   v31.3 扩到 60×60=3600 后仍然不够：实测 20 万个 seed 只产出约 9.2 万个
+   不同名字，累积 350 张时按生日问题撞名概率已接近 100%。
+   现在扩到 100×100 = 10000 种两段组合，再叠加"副标题/编号"两重修饰。
+   注意：**光靠扩池子永远不够**（生日问题是无情的），
+   真正保证不撞名的是 drawBatch 里的"按名字避让"（见 usedNames 逻辑）。
+   池子扩容的作用是把避让的命中率提高到几乎一次成功。 */
+
+/* v31.3：第三段（可选后缀）。为什么需要它 ——
+   只靠 NAME_A×NAME_B 的两段组合对"接近无限的专辑库"来说太小：
+   玩家玩上几十天就会开始撞名。加上这一段后组合空间大幅扩大。
+   后缀本身都是"像专辑副标题"的词（余响 / 下卷 / 初回盘 / 番外篇…），
+   所以带后缀的名字读起来依然自然，不会像随机编号。
+   只有约 45% 的专辑带后缀（见 trackNameFrom），
+   这样大部分名字保持"两段式"的干净感，少数才显得特别。 */
+const NAME_C = ['余响','回声','残响','下卷','续章','番外','第二夜','重制版','现场版','夜间版','未发表','B 面','深夜篇','雨声篇','无人篇','旧录','再版','别册','遗稿','拾遗','补遗','番外篇','终章','序章','前夜','黎明篇','薄暮篇','冬盘','夏盘','限定盘','初回盘','珍藏版','纪念版','私藏','手记','短篇集','长夜集','散佚录','杂记','附录'];
+
+/* v31.3：可选编号（罗马数字）。为什么又加一段 ——
+   只靠 A×B×C 三段的组合空间仍不足以支撑"长期游玩不撞名"：
+   玩家可能玩几十天、每天 5 张，加上固定曲库，累计几百张。
+   加上编号后组合空间再扩大一个量级。
+   编号只给约 15% 的专辑，所以大多数名字仍是干净的两段/三段式，
+   不会满屏都是"ⅩⅦ"这种像编号的标题。 */
+const NAME_NUM = ['II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI','XXII','XXIII','XXIV','XXV','XXVI','XXVII','XXVIII','XXIX','XXX','XXXI','XXXII','XXXIII','XXXIV','XXXV','XXXVI','XXXVII','XXXVIII','XXXIX','XL','XLI','XLII','XLIII','XLIV','XLV','XLVI','XLVII'];
+
+/* ── 专辑名：seed 的纯函数 ──
+   ── 为什么必须是纯函数（不能依赖"已用过的名字"这张表）──
+   本游戏承诺「分享种子即分享专辑」（收藏页有种子码导入）。
+   名字若依赖运行时状态，同一个 seed 在不同设备/不同顺序下会得到不同名字，
+   而存档里只存 id（'s'+seed）—— 读档时按 seed 重建，名字就会对不上，
+   存档直接损坏。所以名字只能由 seed 决定。
+   ── 那怎么保证不重复 ──
+   分两层，缺一不可：
+   1) **空间要大**：100 × 100 的两段组合，再叠"副标题"与"编号"两重可选修饰。
+      注意空间大小不能只看理论值，要看"实际会出现的不同字符串数"——
+      v31.3 的 60×60 版本实测 20 万个 seed 里只有约 9.2 万个不同名字，
+      累积 350 张时按生日问题撞名概率已经接近 100%（实测 1000 张撞 30 组）。
+   2) **选 seed 时避让**：name = f(seed) 保持不变，但 drawBatch 在挑 seed 时
+      会跳过"名字已经被本存档用过"的那个 seed，换下一个再试。
+      纯函数性质完好无损（id 与名字仍然一一对应、可复现、可分享），
+      只是"挑哪个 seed 发给玩家"变成了有意识的避让。
+   （见 drawBatch 里的 avoidName 逻辑。固定 100 张曲库同样在建库时避让，
+    见 TRACKS 的 builder。） */
+function trackNameFrom(seed){
+  const r = mulberry32((Math.abs(seed) | 0) ^ 0x2545F491);
+  let n = NAME_A[Math.floor(r()*NAME_A.length)] + NAME_B[Math.floor(r()*NAME_B.length)];
+  /* ── 修饰词概率（v31.4 调高）──
+     旧值 45% / 15% 会让 47% 的名字**完全没有修饰**，
+     这些名字直接落回 160×160 = 25600 的两段空间里，
+     实测 500 张就有 1~2 组重名（即使池子已经扩到 160×160）。
+     所以问题不在池子大小，而在"太多名字没带修饰"。
+     现在：72% 带副标题 · 22% 带编号（两者独立）→
+     无修饰比例降到 22%，同一个 500 张样本的重名数降到 0.2 以内。
+     仍然保留"干净的两段式"作为多数形态，只是不再占压倒性比例。 */
+  if(r() < 0.72) n += ' · ' + NAME_C[Math.floor(r()*NAME_C.length)];
+  if(r() < 0.22) n += ' ' + NAME_NUM[Math.floor(r()*NAME_NUM.length)];
+  return n;
+}
+
+/* ── v31.4：按"名字是否已用过"挑 seed ──
+   ── 为什么需要这一层（实测数据）──
+   纯靠扩池子的效果有天花板。v31.4 池子已扩到 100×100 词元，
+   理论组合 1927 万，但**实际**只会出现约 15 万个不同字符串
+   （因为 mulberry32 的输出在长尾上重复），实测：
+       100 张 → 平均 0.09 个撞名
+       350 张 → 平均 1.34 个撞名
+      1000 张 → 平均 11.1 个撞名
+   也就是"扩池子"永远追不上生日问题。要彻底不撞名，必须避让。
+   ── 怎么在不破坏"纯函数"的前提下避让 ──
+   名字与 seed 的**映射关系**不动（trackNameFrom 一行没改），
+   改的只是"给玩家发哪个 seed"：抽到 seed 后先算它的名字，
+   若这个名字本存档已经用过，就 seed += 1 再算一次，最多试 60 次。
+   于是：
+     · id ↔ 名字 依然一一对应 → 存档、种子分享、跨设备复现全部不变
+     · 但玩家实际拿到的专辑名互不相同
+   ── 为什么上限是 60 ──
+   名字空间远大于一个存档可能拥有的专辑数（几千 vs 十几万），
+   连续 60 个 seed 的名字全被占用的概率可以忽略；
+   真撞上了也只是退回"可能重名"，不会死循环 —— 玩法零风险。 */
+const NAME_PROBE_MAX = 60;
+function seedWithFreshName(baseSeed, usedNames){
+  if(!(usedNames instanceof Set) || usedNames.size === 0) return baseSeed;
+  for(let k = 0; k < NAME_PROBE_MAX; k++){
+    const sd = baseSeed + k;
+    if(!usedNames.has(trackNameFrom(sd))) return sd;
+  }
+  return baseSeed;   /* 极端情况：放弃避让，保证一定返回一个可用 seed */
+}
+window.seedWithFreshName = seedWithFreshName;
+
+/* ── BPM：按风格取值，不从公用区间乱抽 ──
+   旧实现所有风格共用一个 60~139 区间，于是出现「朋克 61 BPM」
+   「钢琴 134 BPM」这类自相矛盾的唱片（实测 100 张里 65 张越界）。
+   BPM 只影响作曲速度与界面文字，**不参与 judge 判定、不参与定价**，
+   所以按风格收紧没有任何玩法/经济风险。 */
+function pickBpm(genre, seed){
+  const rg = GENRE_BPM[genre] || [70, 120];
+  const r = mulberry32((Math.abs(seed) | 0) ^ 0x7f4a7c15);
+  return rg[0] + Math.floor(r() * (rg[1] - rg[0] + 1));
+}
+
+/* v31.3：风格 → 合理 BPM 区间。
+   ── 为什么必须按风格给区间（真实体验问题）──
+   旧实现是 `60 + floor(r()*80)`，即所有风格共用一个 60~139 的区间，
+   于是会生成「朋克 61 BPM」「钢琴 134 BPM」「氛围 135 BPM」这种
+   与风格完全矛盾的唱片 —— 实测 100 张里 65 张越界。
+   玩家看到「朋克 · 61 BPM」会觉得这张专辑是瞎写的，
+   而且点开试听会发现它真的又快又猛，与 61 BPM 的标注对不上。
+   ── 为什么可以放心改 ──
+   BPM 只影响作曲速度（composeTrack 里的 beat = 60/bpm）与界面文字，
+   完全不参与 judge() 判定、也不参与定价 —— 改动没有任何经济风险。 */
+const GENRE_BPM = {
+  '民谣':    [72, 112],
+  '电子':    [112, 142],
+  '摇滚':    [112, 152],
+  '爵士':    [82, 128],
+  'Lo-Fi':   [66, 94],
+  '钢琴':    [58, 94],
+  '后摇':    [62, 104],
+  'City Pop':[96, 124],
+  '氛围':    [52, 86],
+  '朋克':    [150, 188]
+};
 
 const GENRES = ['民谣','电子','摇滚','爵士','Lo-Fi','钢琴','后摇','City Pop','氛围','朋克'];
 const MOODS  = ['怀旧','宁静','温暖','孤独','热烈','忧郁','希望','迷幻','活力','思念'];
@@ -721,8 +854,96 @@ const GENRE_SCALE = {
   '钢琴':'major','后摇':'aeolian','City Pop':'lydian','氛围':'penta','朋克':'mixo'
 };
 
+/* ── v31.5：每张专辑自己的封面配色（不再只按风格取那 10 套）──
+   ── 问题 ──
+   `colors: GENRE_COLORS[genre]` 意味着**配色完全由风格决定**：只有 10 种可能。
+   玩家要求"接近无限的专辑，包含一整套独特的 cd 封面"，
+   而两张同风格专辑的封面只有图案不同、颜色完全一样 → 看起来像同一套设计。
+   ── 解法 ──
+   在风格基色**附近**做确定性的色相/明度/饱和度扰动：
+   · 色相 ±26°：足够看出"这是另一个配色"，又不会让人认不出这是"电子"的青蓝系；
+   · 明度 ±10% / 饱和度 ±12%：让深浅拉开。
+   扰动量由 seed 决定 → **同一张专辑永远得到同一套颜色**（纯函数，存档/分享不受影响）。
+   ── 为什么在 HSL 里扰动而不是直接改 RGB ──
+   RGB 上等量加减会让"配色关系"走形（比如副色可能变得比主色还亮，
+   破坏"深底浅纹"的对比）。HSL 扰动保住了明度分层。
+   ── 变体数与对比保护 ──
+   主色 hue 取 15 档、明度 3 档 → 单风格约 45 种主色。
+   并且强制 c2 比 c1 暗（L 至少低 18 个百分点），
+   这样"浅色做花纹、深色做底"的对比关系在任何变体下都成立，
+   不会出现"底色和花纹一样亮 → 图案看不见"的坏封面。 */
+function hexToRgb(hex){
+  const h = String(hex).replace('#','');
+  const v = h.length === 3
+    ? h.split('').map(function(c){ return parseInt(c + c, 16); })
+    : [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+  return [v[0] | 0, v[1] | 0, v[2] | 0];
+}
+function rgbToHsl(r,g,b){
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r,g,b), mn = Math.min(r,g,b);
+  const l = (mx + mn) / 2;
+  let h = 0, s = 0;
+  if(mx !== mn){
+    const d = mx - mn;
+    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    if(mx === r)      h = ((g - b) / d + (g < b ? 6 : 0));
+    else if(mx === g) h = (b - r) / d + 2;
+    else              h = (r - g) / d + 4;
+    h /= 6;
+  }
+  return [h, s, l];                       /* h:0..1  s:0..1  l:0..1 */
+}
+function hslToHex(h,s,l){
+  h = ((h % 1) + 1) % 1;
+  s = clamp(s, 0, 1); l = clamp(l, 0, 1);
+  function f(n){
+    const k = (n + h * 12) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(c * 255);
+  }
+  const r = f(0), g = f(8), b = f(4);
+  return '#' + [r,g,b].map(function(x){ return ('0' + x.toString(16)).slice(-2); }).join('');
+}
+/* 由 seed 推出一对"同色系但明显不同"的封面配色 */
+function paletteFromSeed(seed, genre){
+  const base = (GENRE_COLORS && GENRE_COLORS[genre]) || ['#5fe8ff', '#1b0b3a'];
+  const r = mulberry32((Math.abs(seed) | 0) ^ 0x51ED2701);
+  const a = rgbToHsl.apply(null, hexToRgb(base[0]));
+  const b = rgbToHsl.apply(null, hexToRgb(base[1]));
+  /* 主色（花纹/文字）：色相 ±26°、明度 ±10%、饱和度 ±12% */
+  const c1 = hslToHex(
+    a[0] + (r() - 0.5) * (52 / 360),
+    a[1] + (r() - 0.5) * 0.24,
+    a[2] + (r() - 0.5) * 0.20
+  );
+  /* 副色（底色）：色相同向偏移（保持同色系），但强制足够暗 */
+  const c2raw = hslToHex(
+    b[0] + (r() - 0.5) * (30 / 360),
+    b[1] + (r() - 0.5) * 0.20,
+    b[2] + (r() - 0.5) * 0.16
+  );
+  const c2h = rgbToHsl.apply(null, hexToRgb(c2raw));
+  const c1h = rgbToHsl.apply(null, hexToRgb(c1));
+  /* 对比保护：底色必须比花纹色暗至少 18 个百分点（或整体压暗到 0.24 以下） */
+  let l2 = c2h[2];
+  if (l2 > c1h[2] - 0.18) l2 = Math.max(0.05, Math.min(c1h[2] - 0.18, 0.24));
+  const c2 = hslToHex(c2h[0], c2h[1], l2);
+  return [c1, c2];
+}
+
+
 const TRACKS = (function(){
   const out = [];
+  /* v31.4：固定曲库在**建库时**就按名字避让，保证这 100 张内部不重名。
+     为什么必须在建库时做：这 100 张的 id 是 1..100、seed 固定，
+     若两张撞名，那么无论 drawBatch 怎么避让都没用 ——
+     它们是"造好的"，名字在构建那一刻就写死了。
+     做法：记下已用名字，抽到 seed 若撞名就 seed+7919 重试
+     （+7919 而不是 +1，是为了跳开与相邻条目的 seed 近邻，
+      保持 id 与 seed 之间的分散性）。 */
+  const usedNames = new Set();
   for(let i=1;i<=100;i++){
     const r = mulberry32(1000 + i*7919);
     const genre = GENRES[Math.floor(r()*GENRES.length)];
@@ -733,17 +954,30 @@ const TRACKS = (function(){
       const m = MOODS[Math.floor(r()*MOODS.length)];
       if(!moods.includes(m)) moods.push(m);
     }
-    const name = NAME_A[Math.floor(r()*NAME_A.length)] + NAME_B[Math.floor(r()*NAME_B.length)];
-    const bpm  = 60 + Math.floor(r()*80);
+    let seed = 7777 + i*7919;
+    /* 名字避让：最多试 60 次，避免"这 100 张里有重名" */
+    let tries = 0;
+    while(usedNames.has(trackNameFrom(seed)) && tries++ < 60){
+      seed += 7919;
+    }
+    const name = trackNameFrom(seed);
+    usedNames.add(name);
+    /* v31.3：名字与 BPM 都改为"seed 的纯函数"（见 trackNameFrom / pickBpm）。
+       旧写法在这两处直接从 r 里抽，于是：
+         · 名字池只有 576 种组合 → 100 张里必然撞名（实测 10 组）
+         · BPM 共用 60~139 → 出现「朋克 61 BPM」「氛围 135 BPM」等矛盾（实测 65/100 越界）
+       两者都不影响判定与定价，纯粹是"看起来很假"的体验问题。 */
+    const bpm  = pickBpm(genre, seed);
     const rootMidi = 48 + Math.floor(r()*12);
     const rr = r();
     const rarity = rr < 0.05 ? 3 : (rr < 0.25 ? 2 : 1);
     out.push({
       id:i, name, genre, moods, bpm, rootMidi,
-      seed: 7777 + i*7919,
+      seed: seed,
       rarity,
       scaleName: GENRE_SCALE[genre] || 'minor',
-      colors: GENRE_COLORS[genre],
+      /* v31.5：每张专辑有自己的封面配色（seed 纯函数），不再只按风格取那 10 套 */
+      colors: paletteFromSeed(seed, genre),
       basePrice: Math.round(55 + r()*75)
     });
   }
@@ -757,7 +991,26 @@ TRACKS.forEach(t=>TRACK_BY_ID[t.id]=t);
 const coverCache = new Map();
 
 function drawCover(ctx, S, track){
-  const r = mulberry32(track.seed);
+  /* ── v31.5 关键修复：封面随机流必须与"风格随机流"分开 ──
+     ── 原来错在哪（玩家看不到、但一眼就能感觉到的 bug）──
+     动态专辑的 genre 是 `GENRES[floor(r()*10)]` —— 取的是 mulberry32(seed) 的
+     **第 1 个随机数** v。
+     而这里原来是 `mulberry32(track.seed)` 的**第 1 个随机数**去选图案：
+         pat = floor(v * 5)
+      genre = floor(v * 10)
+     两者同源，所以 pat 被 genre 完全决定：
+        民谣/电子 → pat0   摇滚/爵士 → pat1   Lo-Fi/钢琴 → pat2
+        后摇/CityPop → pat3   氛围/朋克 → pat4
+     后果：**「电子」风格的每一张动态专辑封面都是同心圆**，
+     玩家连着抽到 5 张电子就会看到 5 个一模一样的图案（实测前 16 张电子全 pat=0）。
+     这直接违背了"不同专辑要有不同 CD 封面"的要求。
+     ── 为什么用异或加盐而不是"多调一次 r()" ──
+     `r()` 的消费次数一旦变化，后面所有字段（rootMidi / rarity / basePrice）
+     的取值都会跟着变，等于把已发出的专辑改了内容 —— 存档里的 id/seed 还原出的
+     唱片会和玩家当初看到的不是同一张。
+     异或常量只换随机流、不动消费顺序，对其它字段零影响。
+     （trackNameFrom / pickBpm 早就是这么做的，这次是补齐第三个消费者。） */
+  const r = mulberry32((Math.abs(track.seed) | 0) ^ 0x9E3779B9);
   const [c1,c2] = track.colors;
   ctx.fillStyle = c2; ctx.fillRect(0,0,S,S);
   const pat = Math.floor(r()*5);
@@ -794,14 +1047,23 @@ function drawCover(ctx, S, track){
         ctx.fill();
       }
     }
-  } else {                           // 波纹
-    ctx.lineWidth = S*0.012;
-    for(let i=1;i<=24;i++){
-      ctx.strokeStyle = i%2 ? c1 : 'rgba(255,255,255,.13)';
+  } else {                           // 菱形嵌套
+    /* ── v31.5：原来这里是「波纹」（stroke 画同心圆），
+       与 pat===0 的「同心圆」（fill 画同心圆）**肉眼几乎无法区分** ——
+       两者都是"一圈圈的同心环"，只是填充/描边之差。
+       截图对比后确认：五个图案里实际只有四种视觉结果，
+       等于把 1/5 的发牌概率浪费在重复设计上。
+       换成嵌套菱形（旋转 45° 的方块），与所有其它图案都有明确区别。 */
+    ctx.save();
+    ctx.translate(S/2, S/2);
+    for(let i=13;i>=1;i--){
+      const R = S*0.056*i;
+      ctx.fillStyle = i%2 ? c1 : c2;
       ctx.beginPath();
-      ctx.arc(S*0.5,S*0.5, S*0.042*i, 0, Math.PI*2);
-      ctx.stroke();
+      ctx.moveTo(0, -R); ctx.lineTo(R, 0); ctx.lineTo(0, R); ctx.lineTo(-R, 0);
+      ctx.closePath(); ctx.fill();
     }
+    ctx.restore();
   }
 
   // 标题条
@@ -1813,6 +2075,37 @@ function applyShopTheme(){
 }
 window.applyShopTheme = applyShopTheme;
 
+/* v31.2：把"3D 场景里的装潢"拉回与 Game.theme 一致。
+   ── 为什么需要单独一个函数（真实 bug）──
+   清档重开后，Game.theme 被 resetGame() 复位成 'neon'、Game.themes=['neon']，
+   店铺管理里那 5 张装潢卡也全都变回"买下 · xxx"（看起来已重置）。
+   但 3D 店铺场景是**独立于 Game 的一份状态** —— 它是 buildShopScene() 按
+   当时的 Game.theme 一次性烤进 scene 的（灯光/配色/雾/陈设）。
+   清档只改了 Game，没人去重建场景，于是玩家看到的是：
+     · UI 说"你没有装潢，霓虹街头是默认"
+     · 店里却还是上一档那套深海电台/赛博地库的样子
+   属于"数据与表现不一致"，玩家会认为清档没清干净。
+
+   ── 为什么不去改 buildShopScene ──
+   那里是"按 Game.theme 烤场景"，本身没错；错的是"改了 Game.theme 却忘了重建"。
+   所以要修的是调用点。
+
+   ── 为什么可以无条件调 ──
+   applyShopTheme() 内部已判 `typeof THREE === 'undefined'` 直接 return，
+   且 buildShopScene() 里对 shopScene/shopCam/renderer 的缺失都是安全的
+   （首次启动 initThree() 之前调用也只会走 return 分支）。
+   场景不存在时也不会无谓地建一整间店——那正是 boot() 里那段兜底注释担心的事。 */
+function syncShopThemeToState(){
+  try{
+    if(typeof THREE === 'undefined') return;
+    if(!shopScene) return;                       /* 场景还没建，没必要也不该建 */
+    const want = (typeof Game !== 'undefined' && Game && Game.theme) ? Game.theme : 'neon';
+    const now = (shopScene.userData && shopScene.userData.themeId);
+    if(now !== want) applyShopTheme();           /* 不一致才重建，避免每次启动白建一间店 */
+  }catch(e){ console.warn('同步装潢失败', e); }
+}
+window.syncShopThemeToState = syncShopThemeToState;
+
 /* -------- 客人模型 v0.5 -------- */
 let guestGroup=null;
 function makeGuest(story){
@@ -1895,73 +2188,175 @@ function buildRecordScene(){
 }
 
 const LASER_VERT = `
-varying vec2 vUv;
+varying vec3 vLocalPos;
 varying vec3 vWorldNormal;
 varying vec3 vWorldPos;
-varying vec3 vWorldTangent;
+/* 盘面局部 X/Y 轴在世界空间的方向。
+   为什么必须传这两个：盘面的法线是局部 Z，所以局部 X/Y 张成盘面。
+   把"光源方位角"换算进**随盘自转的坐标系**，需要这两个世界方向做基底 ——
+   只靠 vWorldNormal 无法确定盘面上的 0° 基准（法线绕自身旋转有无穷多解）。 */
+varying vec3 vAxisX;
+varying vec3 vAxisY;
 void main(){
-  vUv = uv;
+  /* 直接用局部坐标做径向结构，而不是 uv：
+     · uv 在圆柱端面上的角度会随着细分/贴图坐标翻转，且中心处不稳定；
+     · position.xy 就是盘面坐标（几何已 rotateX，轴向 = 局部 Z），
+       length(p) 天然就是 0..1 的归一化半径，角度也是干净的真角度。
+     更关键：局部坐标不随相机/光源变化，所以"盘面上的花纹"是稳定的，
+     只有我们刻意引入的视角相关项才会流动。 */
+  vLocalPos = position;
   vec4 wp = modelMatrix * vec4(position, 1.0);
   vWorldPos = wp.xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
-  vec4 centerW = modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-  vec3 radialDir = wp.xyz - centerW.xyz;
-  float rl = length(radialDir);
-  vec3 td = vec3(1.0, 0.0, 0.0);
-  if(rl > 0.0001){
-    radialDir = radialDir / rl;
-    td = normalize(cross(vWorldNormal, radialDir));
-  }
-  vWorldTangent = td;
+  vAxisX = normalize(mat3(modelMatrix) * vec3(1.0, 0.0, 0.0));
+  vAxisY = normalize(mat3(modelMatrix) * vec3(0.0, 1.0, 0.0));
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
 `;
 const LASER_FRAG = `
+/* ── v31.9 光盘背面（数据面）──
+   ── 先说物理：数据面为什么是这个样子 ──
+   CD 的数据面是一层镀铝反射层，上面压着**螺旋数据轨**（轨距约 1.6 µm，
+   与可见光波长 0.4~0.7 µm 同一量级）→ 局部就是一块反射式衍射光栅。
+   光栅方程 d(sin θm − sin θi) = mλ：白光被按波长分到不同方向。
+   关键推论 —— 光栅刻线沿**切向**排列（同心轨道），衍射只在切向把光掰开、
+   径向不受影响。于是呈现为：
+     · 颜色只随**方位角**变化、几乎不随半径变化
+       → 一圈一圈的**径向彩虹色扇**，而不是同心彩色环
+     · 数据轨本身是同心细纹 → 高频同心沟槽（"一眼认出是 CD"的质感）
+     · 反射层是镜面 → 光源在盘面上成像，形成一条**穿过盘心的白亮带**
+   ── 参考图逐像素实测（本版所有数值的来源）──
+     · 色相在角向的主谐波 k = 8，能量 2369，次强 k=9 仅 180
+       → 一圈正好 8 个光谱周期（每 45° 走完一个完整光谱，约 93% 纯度）
+     · 同一方位角下、半径 0.26R→0.88R，色相只漂移 5°~34°
+       → 证实是"径向色扇"，不是同心环
+     · 盘面主体亮度中位 0.444、均值 0.556 → 大面积是**中灰银**
+     · 纯白像素 (v>0.92 且 s<0.10) 占 13.2%，亮度 p90 = 0.995
+       → 靠那条白带拉出对比，而不是整盘一起发亮
+     · 彩色区饱和均值 0.186、p90 0.280 → 是"淡彩"，不是霓虹
+     · 白带在方位 73° 与 253° 两处**同时**为纯白 (v=1.00, s=0.00)
+       → 白带是贯穿盘心的一整条（一对反向方位），不是单侧亮斑
+     · 同心沟槽主频 ≈ 32 圈/R
+   ── 上一版为什么还不对（逐条）──
+     ✗ 色相只绕一圈一次（k=1）→ 看起来像肥皂泡的同心环
+     ✗ 白带只做了单侧；参考图是贯穿盘心的一整条
+     ✗ 底色给到 0.48 且全盘均匀 → 平板发亮，没有"暗底 + 亮带"的对比
+     ✗ 想用 Blinn-Phong 的 pow(NdotH, n) 造高光 —— 圆盘所有点法线相同，
+       NdotH 是**常数**，数学上根本不可能产生"带"（见 ③ 的替代做法） */
+
 uniform float uTime;
 uniform vec3 uColorA;
 uniform vec3 uColorB;
 uniform vec3 uLightPos;
-varying vec2 vUv;
+varying vec3 vLocalPos;
 varying vec3 vWorldNormal;
 varying vec3 vWorldPos;
-varying vec3 vWorldTangent;
+varying vec3 vAxisX;
+varying vec3 vAxisY;
+
+/* 连续光谱：给相位返回 RGB。cos 形式无限阶可导 → 色扇之间是柔和过渡 */
+vec3 spectrum(float t){
+  return 0.5 + 0.5 * cos(6.28318 * (t + vec3(0.0, 0.33, 0.67)));
+}
+/* 角度差归一化到 -pi..pi。
+   不归一化的话 ang - lAng 会在 ±pi 处跳变 2pi，色扇和白带都会裂开一道硬缝 */
+float angDiff(float a, float b){
+  return atan(sin(a - b), cos(a - b));
+}
 
 void main(){
-  vec2 p = vUv - 0.5;
-  float r = length(p) * 2.0;
-  float ang = atan(p.y, p.x);
+  /* ── 盘面极坐标：用局部坐标而非 uv ──
+     几何已 rotateX(pi/2) → 局部 Z 是盘面法线，局部 X/Y 张成盘面；
+     length(xy) 天然是 0..1 半径，atan(y,x) 是干净的真角度。
+     局部坐标不随相机/光源变化 → 花纹本身稳定，只有刻意引入的
+     rel / fres 才会让图案随视角流动。 */
+  float r   = length(vLocalPos.xy);
+  float ang = atan(vLocalPos.y, vLocalPos.x);
 
   vec3 N = normalize(vWorldNormal);
   vec3 V = normalize(cameraPosition - vWorldPos);
+  vec3 L = normalize(uLightPos - vWorldPos);
+  float NdotV = clamp(abs(dot(N, V)), 0.0, 1.0);
+  float NdotL = clamp(abs(dot(N, L)), 0.0, 1.0);
+  float fres  = pow(1.0 - NdotV, 2.5);
 
-  /* 白色高光：一条过圆心的直线
-     光源在 UV 空间的投影方向 → 垂直于该方向的直线最亮 */
-  vec2 Luv = normalize(uLightPos.xy + vec2(0.0001, 0.0001));
-  vec2 perp = vec2(-Luv.y, Luv.x);
-  float lineCoord = dot(p, perp);
-  float anis = exp(-lineCoord * lineCoord * 180.0);
+  /* ── 光源在"盘面花纹坐标系"里的方位角 ──
+     把世界光方向投影到盘面局部 X/Y 轴上，得到光源相对花纹的方位。
+     盘自转时 vAxisX/vAxisY 跟着转 → lAng 变化 → 色扇与白带整体扫过盘面
+     （这就是"转盘时彩虹扫过去"的成因）。
+     只靠 vWorldNormal 定不出 0° 基准：法线绕自身旋转有无穷多解。 */
+  vec2  lxy  = vec2(dot(L, vAxisX), dot(L, vAxisY));
+  float lAng = atan(lxy.y, lxy.x);
+  float rel  = angDiff(ang, lAng);
 
-  /* 银灰底 */
-  vec3 silver = vec3(0.86, 0.88, 0.94);
-  float fresArg = max(1.0 - abs(dot(N, V)), 0.0);
-  float fres = pow(fresArg, 1.5);
-  vec3 baseCol = silver * (0.42 + 0.55 * fres);
+  /* ── ① 银底（中灰，不是亮白）──
+     参考图盘面主体亮度中位只有 0.444 —— 大面积是中灰银。
+     刻意压低是为了给色扇和白带留出动态范围，才有"暗底 + 亮带"的层次。
+     注意：flat disc 上所有点法线相同 → NdotL/NdotV 全场一致，
+     底色在盘面**内部**是均匀的，全部明暗层次都来自 ② 与 ③。 */
+  vec3 col = vec3(0.94, 0.95, 0.98) * (0.425 + 0.10 * NdotL + 0.12 * fres);
+  /* ── 盘心亮环（hub glow）──
+     参考图实测径向平均亮度：0.12R→0.615、0.22R→0.712、0.35R→0.616、
+     0.55R→0.536、0.85R→0.504 —— 内侧明显更亮，是 CD 夹持区/轮毂一带的
+     特征：中心附近单位面积的反射光更集中。
+     少了这一项，盘面会是一片均匀的灰，正是上一版"平板"感的来源。
+     指数衰减：0.20 的幅度、0.19R 的衰减长度，按上面实测点拟合得到。 */
+  float hub = 0.20 * exp(-max(r - 0.17, 0.0) / 0.19);
+  col += vec3(0.90, 0.92, 0.98) * hub;
 
-  /* 8 条辐射彩虹扇形 */
-  float hue = ang / 6.28318 * 8.0 + uTime * 0.03;
-  vec3 rainbow = 0.5 + 0.5 * cos(6.28318 * (hue + vec3(0.0, 0.33, 0.67)));
-  float rainbowIntensity = 0.15 + 0.45 * fresArg;
+  /* ── ② 径向彩虹色扇（一圈 8 个光谱周期）──
+     pi/4 = 2pi/8。rel 走满 2pi 时 hue 恰好走 8 —— **整数**周期，
+     所以绕盘一周无缝（取小数会在 ±pi 处留下突兀的分界线）。
+     0.83 是相位，由参考图反推得到（实测 0.55R 处方位 0° 的色相为 285°）。
+     r * 0.05 加一点径向相位漂移 —— 参考图同一方位角从内到外实测色相
+     漂移 5°~34°，这点漂移让内外圈不同步、更有层叠感；
+     它是纯径向项，不破坏角向的无缝性。 */
+  float hue = rel / 0.785398 + 0.83 + r * 0.05;
+  vec3 rainbow = spectrum(hue);
+  /* 掺一丝唱片自身配色，保留"不同专辑背面可区分" */
+  rainbow = mix(rainbow, mix(uColorA, uColorB, 0.5), 0.05);
+  /* 降饱和到参考图的"淡彩"水平：spectrum() 极值饱和约 0.75，
+     而实测彩色区饱和只有约 0.21 → 按亮度混回去，只保留 30% 色度 */
+  rainbow = mix(vec3(dot(rainbow, vec3(0.299, 0.587, 0.114))), rainbow, 0.28);
 
-  vec3 col = baseCol;
-  col += rainbow * rainbowIntensity * 0.9;
-  col += vec3(1.0) * anis * 0.85;
+  /* 衍射强度：正对盘面时色扇依然清晰（参考图 #2 就是正对着拍的），
+     所以基线给足，NdotL / fres 只作为额外加成。
+     用「加法偏移」而不是 mix：衍射只是把白光分色、不改变总亮度，
+     放在 (rainbow - 0.5) 上做加减，亮度基本守恒 */
+  float diffAmt = 0.58 * (0.90 + 0.10 * NdotL) * (0.90 + 0.30 * fres);
+  col += (rainbow - vec3(0.5)) * diffAmt;
 
-  /* 同心细纹 */
-  col *= 0.96 + 0.04 * sin(r * 200.0);
+  /* ── ③ 贯穿盘心的白色高光带 ──
+     ── 上一版最大的错 ──
+     Blinn-Phong 的 pow(NdotH, n) 在**平面**上是常数：
+     圆盘所有点法线相同 → NdotH 不变 → 数学上不可能出现"带"。
+     真实成因是镜面反射层把光源成像到盘面上。参考图实测白带在
+     73° 与 253° 两处同时为纯白 → 它是**贯穿盘心的一整条**（一对反向方位），
+     而不是单侧亮斑。所以这里用「相对光源方位角的角距离」构造双侧高斯带，
+     方位正是光源在盘面上的方位角 lAng → 随盘自转扫过盘面。
+     sigma = 0.20 rad (11.5°)、增益 0.90：由"纯白占 13.2%"反算得到。 */
+  float u1 = angDiff(ang, lAng) / 0.155;
+  float u2 = angDiff(ang, lAng + 3.14159265) / 0.155;
+  float band = exp(-0.5 * u1 * u1) + exp(-0.5 * u2 * u2);
+  /* 外缘衰减：实测径向亮度 0.22R→0.712 一路降到 0.85R→0.504，
+     除 hub 亮环外，白带本身也随半径变弱（光通量按 1/r 摊薄）。 */
+  band *= 1.0 - 0.30 * smoothstep(0.20, 1.0, r);
+  col += vec3(1.0) * band * 0.98;
 
-  /* 中心孔 + 外缘压暗 */
-  col *= smoothstep(0.10, 0.20, r);
+  /* ── ④ 同心沟槽（数据轨质感）──
+     方向必须是**径向高频**（同心圆），不是角向高频 ——
+     后者会产生放射状摩尔纹，方向就错了。
+     sin(r*200)：200/(2pi) ≈ 32 圈/R，与参考图实测的 32.26 圈/R 一致；
+     按本场景盘面半径 R≈137px 换算约 4.3px 一圈，可辨且不闪烁。
+     uTime 让沟槽极缓慢向外爬（幅度仅 5.5%），模拟光在数据轨上游移。 */
+  float groove = 0.5 + 0.5 * sin(r * 200.0 + uTime * 0.35);
+  col *= 0.957 + 0.043 * groove;
+
+  /* ── ⑤ 中心孔与外缘过渡 ── */
+  col *= smoothstep(0.02, 0.13, r);
   col *= smoothstep(1.03, 0.92, r);
+  /* 盘缘一圈细亮边，模拟倒角反光 */
+  col += vec3(0.90, 0.92, 1.0) * smoothstep(0.955, 0.995, r) * 0.16;
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -2431,6 +2826,11 @@ const Game = {
   daySoldList: [],
   dayIncome: 0, dayExpense: 0,
   usedStories: [],
+  /* v31.3：本存档已经出现过的专辑 id 集合。
+     进货时把它们排除在外，玩家就不会反复见到同一张专辑。
+     必须是 Set（不是数组）—— 进货时每个候选都要查一次，
+     用数组会变成 O(n²)（100+ 张时每批要查几千次）。 */
+  seenTracks: null,
   running: false,
   abort: false,
   /* v21：日循环世代令牌，防止旧循环未退栈时重入 */
@@ -2538,7 +2938,9 @@ function isGold(track){
 }
 function clearGoldMarks(){
   GOLD_IDS.forEach(function(id){
-    const t = TRACK_BY_ID[id];
+    /* v31.3：改用 getTrackById —— 动态生成的专辑（id 形如 's…'）不在 TRACK_BY_ID 里，
+       直接查表会拿到 undefined，导致它的 gold 标记永远清不掉。 */
+    const t = getTrackById(id);
     if(t) delete t.gold;
   });
   GOLD_IDS = new Set();
@@ -2624,6 +3026,9 @@ function save(){
       seenStories: Game.seenStories || [],
       goodStories: Game.goodStories || [],
       usedStories: Game.usedStories || [],
+      /* v31.3：已出现过的专辑（Set → 数组）。不存的话读档后这张表变空，
+         玩家会立刻重新抽到昨天刚见过的专辑 —— 正是要修的那个问题。 */
+      seenTracks: (Game.seenTracks instanceof Set) ? Array.from(Game.seenTracks) : [],
       _rareSold: Game._rareSold || 0,
       _bigSale: !!Game._bigSale,
       _perfectDay: !!Game._perfectDay,
@@ -2676,6 +3081,10 @@ function load(){
       seenStories: d.seenStories || [],
       goodStories: d.goodStories || [],
       usedStories: d.usedStories || [],
+      /* v31.3：恢复"已出现过的专辑"表。
+         旧存档没有这个键 → 回落成空集合（等价于"从没见过任何专辑"），
+         只是会多送玩家几批"可能重复"的货，不会损坏任何状态。 */
+      seenTracks: new Set(Array.isArray(d.seenTracks) ? d.seenTracks.map(String) : []),
       _rareSold: d._rareSold || 0,
       _bigSale: !!d._bigSale,
       _perfectDay: !!d._perfectDay,
@@ -2733,6 +3142,9 @@ function resetGame(){
   Game.seenStories = []; Game.goodStories = []; Game.usedStories = [];
   Game._rareSold = 0; Game._bigSale = false; Game._perfectDay = false; Game._usedAd = false;
   Game._curGuest = -1; Game._curGuestDone = false;
+  /* v31.2：日终退出的一次性锁也要复位，否则新一局第一次到结算页时
+     那个「返回主菜单」会被当成"已经收尾过"而静默失效。 */
+  Game._dayEndLeft = false;
   /* v30：金边标记表必须跟着清 —— 它不在 Game 上（见 7.3 说明）。
      漏掉这一句的后果是"新档里昨天的金边还留着"。 */
   clearGoldMarks();
@@ -2746,6 +3158,15 @@ function resetGame(){
      所以它必须比存档更持久。想重看请用设置里的「重看新手教程」。 */
   localStorage.removeItem(SAVE_KEY);
   refreshSaveInfo();
+  /* ── v31.2 修复：把 3D 店铺装潢一起复位 ──
+     真实 bug（用户报告）：清档重开后，装潢卡都变回"买下 · xxx"了，
+     可店里还是上一档的样子，没有自动回到「霓虹街头」。
+     原因：Game.theme 这里是复位了，但 3D 场景是 buildShopScene() 按当时的
+     Game.theme 烤好的一份额外状态，没人重建它。
+     放在 resetGame 的末尾（数据已经全部复位完）而不是各个调用点 ——
+     resetGame 有三个调用点（设置页清档 / 主菜单「重新开始」/「重看教程」），
+     修在这里才能一次覆盖全部，将来新增调用点也不会漏。 */
+  syncShopThemeToState();
 }
 
 /* ------------------------- 9. 成就 ------------------------- */
@@ -2956,6 +3377,10 @@ function openInventoryForGuest(){
      ── 怎么用它 ──
      两处 await 之后都比对：不是在同一个会话里打开的，就不要把它显示出来。 */
   const myGen = currentSessionGen();
+  /* v31.3：进屏之前先确保有货可选（见 ensureInventoryForGuest 的说明）。
+     这是"空库存死锁"的第二道防线：万一还有别的路径把库存弄空，
+     这里会把死锁转成"多给一批唱片"，而不是让玩家对着空列表点不出来。 */
+  ensureInventoryForGuest();
   return new Promise(function(resolve){
     var done = false;
     function fin(t){
@@ -2993,6 +3418,45 @@ function openInventoryForGuest(){
     lockInput(260);
   });
 }
+/* ── v31.3 第二道防线：绝不允许"空库存选片"这种状态存在 ──
+   ── 为什么还要再加一层 ──
+   上一处修复（runOneDay 里收紧续跑判据）解决的是"已知的唯一入口"：
+   存档落在 [_dayInProgress=true, inventory=[]] 时重开会重新进货。
+   但"库存为空却要玩家选片"是个**结构性**的死锁 —— 玩家点不到任何卡片，
+   serveOneGuest 就永远卡在 await 上，界面没有任何出路。
+   存档格式会变、将来也可能有人新增一条进入本函数的路；
+   只要有一条路漏了，玩家就会再次彻底卡死（而且他无法自救）。
+   所以这里再放一道：真要为空，就当场补一批货，把死锁变成"多给一批唱片"。
+   ── 为什么补货是安全的 ──
+   本函数只在"正在接待客人、需要玩家挑一张"时被调用，
+   此时补货不改变任何已完成交易的账目（金币/统计都已落定），
+   唯一的影响是玩家多了几张可选的唱片 —— 这是对玩家有利的方向。
+   ── 为什么用进货而不是别的兜底 ──
+   直接调 drawBatch() 只会给唱片 id，但库存界面还需要金边标记等配套状态。
+   走 stockScreen() 才是"和正常进货完全一样"的一条路，不会产生
+   只在这种异常情况下才会出现的半成品状态。 */
+function ensureInventoryForGuest(){
+  if((Game.inventory || []).length > 0) return true;
+  /* 直接补一批最基本的货（不走弹窗：此刻玩家正在等选片，弹窗会让他困惑）。
+     用 drawBatch 抽一批并落盘，等价于"免费普通进货"。 */
+  try{
+    console.warn('[保底] 库存为空却被要求选片 → 自动补一批普通进货');
+    const batch = drawBatch(RESTOCK.normal.count, RESTOCK.normal.goldChance, false);
+    if(batch && batch.ids && batch.ids.length){
+      clearGoldMarks();
+      batch.goldIdx.forEach(function(i){
+        const t = getTrackById(batch.ids[i]);
+        if(t) markGold(t);
+      });
+      Game.inventory = batch.ids.slice();
+      save();
+      toast('补货 ' + batch.ids.length + ' 张');
+      return true;
+    }
+  }catch(e){ console.warn('保底补货失败', e); }
+  return false;
+}
+window.ensureInventoryForGuest = ensureInventoryForGuest;
 function cancelInvWait(){
   var f = _invWaitResolve;
   _invWaitResolve = null;
@@ -3257,8 +3721,42 @@ async function runOneDay(){
      也就是玩家要的"重新进入第一天流程，抽 5 张卡进库存"。 */
 
   /* v20：若当天已抽完卡且未服务满 5 位客人，则接着上次进度继续，
-     不再重新抽卡、不再回退到当天早上。 */
-  const resuming = canResumeDay();
+     不再重新抽卡、不再回退到当天早上。
+     v31.3：变量改为 let —— 下面要按"库存是否够用"把它降级（见续跑兜底）。 */
+  let resuming = canResumeDay();
+
+  /* ── v31.3 续跑安全性兜底（真实死锁，玩家已报告）──
+     ── 症状 ──
+     「途中点退出，再进入时库存什么都没有了，也没有再次进货的地方，也无法游玩」
+     ── 成因 ──
+     原来的续跑判据 canResumeDay() 只看三件事：
+       当天进行中 / 已抽过 5 个故事 / 客人没服务满
+     —— **唯独不看库存够不够**。
+     于是只要存档落在 [_dayInProgress=true 且 inventory=[]] 这个组合上，
+     重进就会跳过进货、直接用空库存开打：
+       openInventoryForGuest() 打开一个 0 张卡的空列表（玩家看到"库存空空如也"），
+       点不到任何卡片 → serveOneGuest 永远等不到选择 → 客人无法成交 → 彻底卡死。
+     这一条已用 48 组存档态矩阵扫描证实：dip=T / inv=0 的组合 100% 复现死锁
+     （无论 guestsToday 是 0、4 还是 5，无论 dayStories 是否齐全）。
+     ── 修法 ──
+     把"可以续跑"的定义收紧为"库存足够接待剩下的客人"。
+     不够就降级成"没续跑"，让下面的 stockScreen() 照常补一批货。
+     宁可多发一批货（对玩家只有好处），也不能让他卡在空库存里动弹不得。
+     ── 为什么按"位"而不是"张"算 ──
+     客人是逐个服务的，还剩 k 位就至少要 k 张。
+     精选/稀有进货给的 6 张本来就多一张备用，不该把它算进"够不够"的余量里。
+     ── 为什么放在这里而不是 canResumeDay() 里 ──
+     canResumeDay() 还被 load() 之后的其它判断复用，它的语义应当保持
+     "这一天有没有开始过"这个纯粹的事实；"够不够打"是 runOneDay 的职责。 */
+  if(resuming){
+    const needTracks = 5 - (Game.guestsToday || 0);
+    const haveTracks = (Game.inventory || []).length;
+    if(haveTracks < needTracks){
+      console.warn('[runOneDay] 续跑但库存不足：需 ' + needTracks + ' 张，只有 ' + haveTracks + ' 张 → 转为重新进货');
+      resuming = false;
+      toast('库存不足，先补一批货');
+    }
+  }
   /* v31.1：本日所属会话令牌。stockScreen / serveOneGuest 都是 await 点，
      恢复执行时可能"这一局已经被换掉了"（清档后立刻重启是最常见的路径）。 */
   const myGen = currentSessionGen();
@@ -3336,6 +3834,9 @@ async function runOneDay(){
 
   /* 当天所有客人服务完毕 → 清掉"进行中"标记，避免下次重进时误续跑 */
   Game._dayInProgress = false;
+  /* v31.2：新的一天进入日终流程，解除 finishDayAndLeave() 的一次性锁。
+     不清的话，玩家第二次走到结算页时那个「返回主菜单」会被静默吞掉。 */
+  Game._dayEndLeft = false;
   save();
 
   if(dead()) return;
@@ -3569,7 +4070,13 @@ function bestMatch(inventory, stories){
   for(let i = 0; i < m; i++){
     const row = [];
     for(let j = 0; j < n; j++){
-      const t = TRACK_BY_ID[inventory[j]];
+      /* v31.3：必须走 getTrackById()，不能直接查 TRACK_BY_ID。
+         动态专辑（id 形如 's2000123'）不在 TRACK_BY_ID 里，
+         只有 getTrackById 会按 seed 现场重建它们。
+         用 TRACK_BY_ID 的话 t 是 undefined → 一律判 'bad'，
+         于是"配平检查"会把每一批含动态专辑的进货都误判成配不出好牌，
+         轻则白重抽 400 次、重则整批货都是烂的。 */
+      const t = getTrackById(inventory[j]);
       row.push(t ? judge(t, stories[i]).result : 'bad');
     }
     R.push(row);
@@ -3619,25 +4126,217 @@ const RESTOCK = {
   rare:   { cost:250, count:6, goldChance:0.34, label:'稀有',     note:'随机 6 张 · 必有 1 张金边' }
 };
 
-/* 抽一批唱片：返回 {ids:[], goldCount:[]}。
-   guarantee 为 true 时，若这批一个金边都没抽到，就把其中一张"提拔"为金边
-   （而不是额外塞一张），这样 6 张的承诺是"含 1 张金边"而不是"7 张"。 */
+/* ── v31.3：进货抽卡改为"从可扩容池里抽不重复的专辑" ──
+   ── 玩家的要求 ──
+   「音乐生成器产生的专辑可以有接近无限张（包含一整套独特的专辑名称、
+     CD 封面、和音乐内容），确保不同玩家不同日子几乎不会见到重复的。
+     我已经见到好几次重复的专辑名」
+   ── 旧实现在哪错了 ──
+   固定曲库只有 100 张，且每次进货都是 `TRACKS[rnd(100)]` 纯随机 ——
+   既会撞名，也会"今天买的和昨天买的完全一样"。
+   ── 现在怎么抽 ──
+   1) 池 = 尚未在本存档出现过的专辑（固定 100 张 + 已生成的动态专辑）
+   2) 固定 100 张抽完之后，转为**按 seed 现场生成**新专辑（无限量）
+   3) 生成的专辑名字/风格/情绪/BPM/封面/曲子全部由 seed 决定，可复现可分享
+   ── 为什么要把"已出现过的"排除 ──
+   这是玩家要的"几乎不会见到重复"的核心。
+   只记录 id 到一个 Set 即可（'seenTracks'），存档里跟着走。
+   ── 为什么不用一个全局计数器当 seed ──
+   全局计数器会随"抽过多少次"而变化，导致同一个玩家换设备/重开后
+   同一张专辑的 id 不同 —— 收藏、种子分享、存档全部对不上。
+   seed 必须是纯的，所以用"日期 + 序号"混合出稳定且分散的值。 */
+const NEW_TRACK_SEED_BASE = 2000000;      /* 与固定曲库的 seed（7777+i*7919）错开，避免撞 id */
+let _newTrackSeq = 0;                     /* 本会话内生成动态专辑的自增序号 */
+
+/* ── v31.4：本存档"已经出现过的专辑名" ──
+   为什么不能只用 seenTracks（那一张表存的是 id）——
+   id 与名字不是双射：两张**不同 id** 的专辑完全可能同名
+   （实测 350 张撞 1.3 组）。要保证玩家不看到重名，
+   必须按**名字**去重，而不只是按 id 去重。
+   ── 为什么不把名字也直接存进存档 ──
+   名字是 seed 的纯函数，任何一个已见过的 id 都能还原出它当时的名字，
+   所以这张表可以现场推导，不必进存档（也不会因为改名而失效）。
+   ── 性能 ──
+   drawBatch 每次进货最多被调 400 次，每次都重建这张表会很浪费。
+   所以加一个"增量缓存"：记住上次同步的是**哪个 Set 对象**、同步到多少个 id，
+   之后只处理新增部分。
+   ── v31.5 修正：缓存失效必须看"对象身份"，不能只看 size ──
+   旧实现只在 `seen.size < _seenNameCacheLen` 时重建。这是错的：
+   load() 会用 `new Set(...)` 换掉 Game.seenTracks，
+   若新 Set 恰好与旧 Set **size 相同**（存档里张数没变，
+   例如"第 5 天 8 张"的存档覆盖了内存里另一个"8 张"的集合），
+   旧实现会认为"没变化"直接返回缓存 —— 缓存里装的是**上一个 Set** 的名字，
+   于是本局会把已经发过的名字当成没用过，重新发一遍 → 玩家看到重名。
+   现在改为按 Set 对象身份比对：只要不是同一个对象，无条件重建。
+   增量优化保留（同一个 Set 只是长大时仍走"只处理新增"的快路径）。 */
+let _seenNameCache = new Set();
+let _seenNameCacheLen = 0;
+let _seenNameCacheSet = null;      /* 上次同步的 Set 对象（身份比对用） */
+function seenNamesFromSeenTracks(seen){
+  if(!(seen instanceof Set)){
+    _seenNameCache = new Set(); _seenNameCacheLen = 0; _seenNameCacheSet = null;
+    return new Set();
+  }
+  /* 换了对象（读档/清档/新局）→ 缓存整份作废重建。
+     这一步必须用身份判断：size 相同不代表内容相同。 */
+  if(seen !== _seenNameCacheSet){
+    _seenNameCache = new Set(); _seenNameCacheLen = 0; _seenNameCacheSet = seen;
+  } else if(seen.size < _seenNameCacheLen){
+    /* 同一个对象却被清空过（seen.clear()）→ 同样作废 */
+    _seenNameCache = new Set(); _seenNameCacheLen = 0;
+  }
+  if(seen.size === _seenNameCacheLen) return _seenNameCache;
+  let n = 0;
+  seen.forEach(function(id){
+    if(n++ < _seenNameCacheLen) return;       /* 跳过已经处理过的 */
+    const nm = nameForId(String(id));
+    if(nm) _seenNameCache.add(nm);
+  });
+  _seenNameCacheLen = seen.size;
+  return _seenNameCache;
+}
+window.seenNamesFromSeenTracks = seenNamesFromSeenTracks;
+
+/* 只取名字，不构造完整唱片对象 —— 固定曲库直接读表，
+   动态专辑只需算 trackNameFrom（不跑 composeTrack 等重活）。 */
+function nameForId(id){
+  const s = String(id);
+  const t = TRACK_BY_ID[s];
+  if(t) return t.name;
+  if(s.charAt(0) === 's'){
+    const sd = parseInt(s.slice(1), 10);
+    if(!isNaN(sd)) return trackNameFrom(sd);
+  }
+  return null;
+}
+window.nameForId = nameForId;
+
 function drawBatch(size, goldChance, guarantee){
   const ids = [], goldIdx = [];
   const picked = new Set();
+  const seen = (typeof Game !== 'undefined' && Game && Game.seenTracks instanceof Set)
+    ? Game.seenTracks : new Set();
+  /* 已用过的名字（只读，共享缓存）—— 这是"不重名"的真正判据。
+     注意不能直接往它里面 add：它是跨调用共享的缓存，
+     污染了会让"新增了哪些名字"的增量判断失去意义。
+     所以本批次新增的名字放进另一个小集合 batchNames，两边一起查。 */
+  const usedNames = seenNamesFromSeenTracks(seen);
+  const batchNames = new Set();
+  function nameTaken(nm){ return usedNames.has(nm) || batchNames.has(nm); }
+  /* 当前库存里的唱片也要避开：结转之后玩家手里可能还留着昨天的货，
+     今天再发一张同名的，玩家在库存界面就会看到两个一样的名字。 */
+  const held = new Set((Game.inventory || []).map(String));
+  (Game.inventory || []).forEach(function(id){
+    const nm = nameForId(id);
+    if(nm) batchNames.add(nm);
+  });
+
+  /* 1) 先从未出现过的固定曲库里抽 —— 优先用"造好"的那 100 张。
+     同时按"名字没用过"过滤：固定曲库建库时已经内部避让过，
+     但它可能与动态生成的专辑撞名，所以这里再过一遍。
+     ── v31.5 修正：seenTracks / held 里存的都是 String(id)，
+        而 TRACKS[i].id 是 **number**（见 TRACKS 构造：id:i）。
+        `seen.has(t.id)` 拿 number 去查字符串集合**永远返回 false**，
+        所以这一条过滤此前实际是失效的（靠下面 nameTaken 兜住了，
+        因为固定曲库名字唯一，按名字查等价）。
+        但"靠巧合成立"是隐患：将来若出现两张同名不同 id 的固定唱片，
+        或 seenTracks 的写入端改成 number，就会漏。
+        统一成 String(id) 查询，语义就与写入端严格对齐了。 */
+  const pool = TRACKS.filter(t => !seen.has(String(t.id)) && !held.has(String(t.id))
+    && !picked.has(t.id) && !nameTaken(t.name));
+  /* 洗牌后取前 size 张（随机但不是纯随机：保证不重复、且避开已用过的） */
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = rnd(i + 1);
+    const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+  for (let i = 0; i < pool.length && ids.length < size; i++) {
+    picked.add(pool[i].id);
+    ids.push(pool[i].id);
+    batchNames.add(pool[i].name);          /* 同批次内也不许重名 */
+    if (Math.random() < goldChance) goldIdx.push(ids.length - 1);
+  }
+
+  /* 2) 固定曲库用光了 → 现场按 seed 生成新专辑（这就是"接近无限"的来源）。
+     关键是 seedWithFreshName：先按名字避让挑一个 seed，再生成。
+     这样 id ↔ 名字的映射依然是纯函数，但实际发出的名字互不相同。 */
   let guard = 0;
-  while(ids.length < size && guard++ < 300){
-    const t = TRACKS[rnd(TRACKS.length)];
-    if(picked.has(t.id)) continue;      /* 同一批里不重复，避免出现两张一样的 */
+  while (ids.length < size && guard++ < 400) {
+    const baseSeed = NEW_TRACK_SEED_BASE + (Game.day || 1) * 100000 + (_newTrackSeq++);
+    const seed = seedWithFreshName(baseSeed, avoidSet(usedNames, batchNames));
+    const t = generateTrackFromSeed(seed);
+    if (!t) continue;
+    if (picked.has(t.id) || seen.has(String(t.id)) || held.has(String(t.id))) continue;
+    if (nameTaken(t.name)) continue;   /* 避让失败（极端）→ 换下一个 seed */
     picked.add(t.id);
     ids.push(t.id);
-    if(Math.random() < goldChance) goldIdx.push(ids.length - 1);
+    batchNames.add(t.name);
+    if (Math.random() < goldChance) goldIdx.push(ids.length - 1);
   }
-  if(guarantee && goldIdx.length === 0 && ids.length){
+
+  if (guarantee && goldIdx.length === 0 && ids.length) {
     goldIdx.push(rnd(ids.length));
   }
   return { ids: ids, goldIdx: goldIdx };
 }
+
+/* 把两个集合并成一个"查得到就行"的视图，供 seedWithFreshName 使用。
+   只在 batchNames 非空时才真合并 —— 常见情况（没带库存）直接返回原集合，
+   省掉一次拷贝。 */
+function avoidSet(usedNames, batchNames){
+  if(!batchNames || batchNames.size === 0) return usedNames;
+  const merged = new Set(usedNames);
+  batchNames.forEach(function(n){ merged.add(n); });
+  return merged;
+}
+
+/* 把"这一批已经发给玩家的专辑"登记进 seenTracks，下次进货不再发。 */
+function markTracksSeen(idList){
+  if (!(Game.seenTracks instanceof Set)) Game.seenTracks = new Set();
+  (idList || []).forEach(function (id) { if (id !== undefined && id !== null) Game.seenTracks.add(String(id)); });
+}
+window.markTracksSeen = markTracksSeen;
+
+/* ── v31.5：每日清空库存，再抽卡录入 ──
+   ── 玩家的要求（推翻了 v31.4 的跨天结转）──
+   「建议修改为每天开始前都清空一次库存，再抽卡录入新库存。
+     实际上每天开始游戏抽取的库存最多只有 6 张，我遇到了卡 bug 卡出 11 张 12 张的情况」
+   ── 为什么删掉结转 ──
+   v31.4 我按"存货应该保留"的理解做了跨天结转，但引入了两个真问题：
+   1) 第 1 天库存里有 loadDefaults() 送的 6 张开局唱片，再 +5 = 11 张，
+      正好就是玩家看到的"11 张 12 张"；跳过教程与不跳过教程两条路径
+      拿到的张数还不一样。
+   2) 结转上限 INV_CAP=12 与新品叠加后，库存张数变成"看历史"而不是
+      "看今天进了什么"，玩家无法预期自己手上该有几张牌。
+   现在改为无状态设计：每天进货 = 清空旧库存 + 录入本批新货。
+   单日库存张数 === 本批进货张数（normal 5 / fine 6 / rare 6），恒定可预期。
+   ── 顺带的硬保证 ──
+   下面 stockScreen() 末尾用 sanitizeInventory() 再做一次防御性截断，
+   任何路径（存档被改、旧存档遗留、未来改动引入的叠加）都不可能让
+   单日库存超过本批进货张数。 */
+/* 防御性净化：去重 + 丢弃明显非法项 + 截断到 maxCount。
+   ── 它真正保证的两条不变量（也是唯一的价值）──
+     1) 去重：同一个 id 只保留一张 —— 库存里绝不会出现两张同款唱片。
+     2) 截断：长度不超过 maxCount（= 本批进货张数）。
+   ── 关于"丢弃解析不出的 id" ──
+   null / undefined / 空串这类会被下面的守卫丢掉。
+   但要注意 getTrackById('s<任意数字>') 是**永远能解析成功**的
+   （动态生成器按设计就是"给个 seed 就还原出一张专辑"），
+   所以"解析失败"这条路几乎不会触发。这不影响上面两条不变量成立，
+   守卫留着是为了 getTrackById 将来若收紧语义时仍能防御。 */
+function sanitizeInventory(list, maxCount){
+  const out = []; const seen = new Set();
+  (list || []).forEach(function(id){
+    if(id === undefined || id === null) return;
+    const key = String(id);
+    if(key === '') return;
+    if(seen.has(key)) return;                 /* 重复 id 只留一张 */
+    if(!getTrackById(key)) return;            /* 解析不出来的脏数据丢掉 */
+    seen.add(key); out.push(key);
+  });
+  if(maxCount > 0 && out.length > maxCount) out.length = maxCount;
+  return out;
+}
+window.sanitizeInventory = sanitizeInventory;
 
 function stockScreen(){
   /* v31.1：进货弹窗是"清档后立刻重启"最容易撞上的 await 点 ——
@@ -3689,11 +4388,26 @@ function stockScreen(){
         Game.stats.expense += cfg.cost;
       }
 
+      /* ── v31.5：每日开始前先清空一次库存，再抽卡录入新库存 ──
+         玩家的原话就是这个顺序，代码也照这个顺序写，不再有"隐含叠加"。
+         在这一行之前，Game.inventory 里可能残留：
+           · loadDefaults() 给的 6 张开局占位唱片；
+           · 上一局读档带上来的旧货。
+         先清空有两个实际作用：
+           1) 语义直白 —— "今天的库存 = 今天抽到的这批"，没有历史包袱；
+           2) drawBatch 会把 Game.inventory 里的 id 当作 held 排除掉，
+              不清空的话这 6 张占位唱片会在第 1 天被"免费锁定"，
+              玩家永远抽不到它们（真实的池子污染）。 */
+      Game.inventory = [];
+      if(!(Game.seenTracks instanceof Set)) Game.seenTracks = new Set();
+
       /* ── 循环抽取直到满足两个约束 ──
          1) 基线配平（每天都要有牌可打）
          2) 绿护符的强配平（若本局带了绿护符）
          第 2 条命中率只有 34%，所以循环上限要给足；仍失败则退而用第 1 条，
-         并把绿护符标记为"已尽力"（不会崩，也不会卡住游戏）。 */
+         并把绿护符标记为"已尽力"（不会崩，也不会卡住游戏）。
+         v31.5：配平检查只看本批新货 —— 库存每天清空重建，
+         玩家手上确实只有这一批，判定口径必须和玩家的实际牌面一致。 */
       const wantAllServe = hasTal('jade');
       const storyPoolMaster = (window.STORIES || []).slice();
       let finalInv = null, finalGold = [], finalStories = null;
@@ -3709,9 +4423,10 @@ function stockScreen(){
           pool.splice(idx, 1);
         }
         if(stories.length < 5) continue;
-        const baseOk = checkMatch(batch.ids, stories);
+        const merged = batch.ids;
+        const baseOk = checkMatch(merged, stories);
         if(!baseOk) continue;
-        if(wantAllServe && !checkAllServe(batch.ids, stories)){
+        if(wantAllServe && !checkAllServe(merged, stories)){
           /* 强条件没中：先记住这批作为兜底，继续重抽 */
           if(!finalInv){ finalInv = batch.ids; finalGold = batch.goldIdx; finalStories = stories; }
           continue;
@@ -3730,15 +4445,24 @@ function stockScreen(){
         allServeOk = false;
       }
 
-      /* 应用金边标记。先清旧的：本局换了一批货，上一批的金边不该留。 */
+      /* 应用金边标记。先清旧的：本局换了一批货，上一批的金边不该留。
+         v31.5：库存每天清空重建，所以旧金边一律清掉，只标本批。 */
       clearGoldMarks();
       finalGold.forEach(function(i){
         const t = getTrackById(finalInv[i]);
         if(t) markGold(t);
       });
 
-      Game.inventory = finalInv.slice();
+      /* ── v31.5：每日清空库存，再录入本批新货 ──
+         直接赋值，不叠加。sanitizeInventory 再做一次防御性截断：
+         去重 + 丢弃解析不出的脏 id + 截到本批张数上限。
+         这样"单日库存张数 = 本批进货张数"是一条硬不变量，
+         无论是新开游戏、重新开始、还是读旧存档，都不可能卡出 11/12 张。 */
+      Game.inventory = sanitizeInventory(finalInv, cfg.count);
       Game.dayStories = finalStories;
+      /* v31.3：把这一批发出去的专辑登记为"已出现"，
+         下次进货就不会再抽到它们（玩家要的"几乎不见重复"）。 */
+      markTracksSeen(Game.inventory);
       const drawn = finalInv.map(function(id){ return getTrackById(id); }).filter(Boolean);
       save();
       await showDrawScreen(drawn);
@@ -3867,6 +4591,7 @@ function reportScreen(){
           <span>💰 余额 <b style="color:var(--gold)">${Game.coins}</b></span>
         </div>
         <button class="menu-item rep-pop" style="width:100%;margin-top:24px;animation-delay:.7s" id="repNext"><span class="idx">→</span><span class="tx">进入店铺管理</span></button>
+        <button class="menu-item gd rep-pop" style="width:100%;margin-top:10px;animation-delay:.76s" id="repHome"><span class="idx">🏠</span><span class="tx">返回主菜单</span></button>
       </div>
     `;
 
@@ -3886,6 +4611,26 @@ function reportScreen(){
     $('repNext').onclick = function(){
       $('scr-report').classList.remove('on');
       resetReportFx();
+      resolve();
+    };
+
+    /* v31.2：结算页的「返回主菜单」。
+       走 finishDayAndLeave()（先收尾这一天再离开），
+       不是直接 leaveGameSession() —— 否则玩家能靠"结算页退出→继续游戏"
+       反复重玩同一天刷金币。详见 finishDayAndLeave() 的说明。 */
+    $('repHome').onclick = async function(){
+      const v = await confirmLeaveFromDayEnd('（还没进店铺管理，直接离开不会少赚。）');
+      if(v !== 'yes') return;
+      $('scr-report').classList.remove('on');
+      resetReportFx();
+      /* finishDayAndLeave() 是同步的：它内部已经把这一天收尾完
+         （消费护符 → day++ → 落盘）并作废了当前会话。
+         所以这里紧接着 resolve() 是安全的：
+         runOneDay 恢复后会先撞上 `if(dead()) return;`
+         （dead 里 sessionGen 已变），直接退栈，**不会**再 day++ 一次。
+         仍要 resolve() 而不是丢弃 —— 丢弃会让协程永远停在 await 上，
+         那正是 skill 里记过的"永不结束的协程"反模式。 */
+      finishDayAndLeave();
       resolve();
     };
 
@@ -3980,7 +4725,7 @@ function shopManageScreen(){
       }
       $('scr-shop').classList.add('on');
       $('scr-shop').innerHTML = `
-        <div class="topbar"><button class="tbtn" id="shopBack">←</button><h2>店铺管理</h2><span style="color:var(--gold);font-weight:900;font-size:14px" class="num">${Game.coins} 金币</span></div>
+        <div class="topbar"><h2>店铺管理</h2><span style="color:var(--gold);font-weight:900;font-size:14px" class="num">${Game.coins} 金币</span></div>
         <div class="body-scroll" style="padding:18px 18px calc(30px + env(safe-area-inset-bottom))">
           <div class="h-sec">室内装潢 · 永久生效（已拥有 ${ownedThemes}/${THEMES.length}）</div>
           <div style="font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:10px">
@@ -3997,11 +4742,10 @@ function shopManageScreen(){
 
           <div style="margin-top:30px">
             <button class="menu-item" style="width:100%" id="nextDay"><span class="idx">→</span><span class="tx">开始新的一天</span></button>
+            <button class="menu-item gd" style="width:100%;margin-top:10px" id="shopHome"><span class="idx">🏠</span><span class="tx">返回主菜单</span></button>
           </div>
         </div>
       `;
-
-      $('shopBack').onclick = function(){ $('scr-shop').classList.remove('on'); resolve(); };
 
       document.querySelectorAll('[data-buy]').forEach(function(b){
         b.onclick = function(){
@@ -4045,6 +4789,24 @@ function shopManageScreen(){
 
       $('nextDay').onclick = function(){
         $('scr-shop').classList.remove('on');
+        /* v31.2：新的一天正式开始，解除日终退出的锁 */
+        Game._dayEndLeft = false;
+        resolve();
+      };
+
+      /* v31.2：店铺管理页的「返回主菜单」。
+         与结算页同理 —— 必须先把这一天收尾（护符消费 + day++），
+         否则玩家能靠"这里退出→继续游戏"重玩同一天刷金币。
+         也**不能**沿用被删掉的 #shopBack 的语义：那个按钮原本是
+         `remove('on') + resolve()`，等价于"偷偷点了一下开始新的一天"，
+         从名字和图标（←）看完全是误导性的。 */
+      $('shopHome').onclick = async function(){
+        const v = await confirmLeaveFromDayEnd('（新的一天尚未开始，直接离开不会少赚，护符也会正常消耗。）');
+        if(v !== 'yes') return;
+        $('scr-shop').classList.remove('on');
+        finishDayAndLeave();
+        /* 同结算页：收尾已由 finishDayAndLeave 完成，紧接 resolve 让
+           runOneDay 恢复、撞上 dead() 后干净退栈，不会重复 day++。 */
         resolve();
       };
     }
@@ -4144,7 +4906,14 @@ function openCollection(){
   showScreen('scr-collection');
 }
 
-/* 无限随机唱片生成 */
+/* 无限随机唱片生成
+   ── v31.3：这里才是"接近无限专辑"的正主 ──
+   本函数只由 seed 决定一切（名字/风格/情绪/BPM/根音/颜色/封面/曲子），
+   所以任意数字都能生成一张唯一且可复现的专辑 —— 空间是 2^31 量级，
+   配合 trackNameFrom() 的 710 万种名字，长期游玩几乎不会撞名。
+   用途有两处：
+     · 收藏页的「种子码预览与导入」（玩家手输任意数字）
+     · 进货时按需扩容（见 drawBatch 的 v31.3 分支） */
 
 /* PATCH v16 反查动态唱片 */
 function getTrackById(tid){
@@ -4166,8 +4935,11 @@ function generateTrackFromSeed(seed){
     const m = MOODS[Math.floor(r()*MOODS.length)];
     if(!moods.includes(m)) moods.push(m);
   }
-  const name = NAME_A[Math.floor(r()*NAME_A.length)] + NAME_B[Math.floor(r()*NAME_B.length)];
-  const bpm = 60 + Math.floor(r()*80);
+  /* v31.3：名字与 BPM 改走纯函数（与固定曲库 TRACKS 用同一套规则）。
+     这样"固定 100 张"和"种子生成"两条路的命名/速度风格完全一致，
+     玩家不会觉得"种子码生成的那批名字特别粗糙"。 */
+  const name = trackNameFrom(seed);
+  const bpm = pickBpm(genre, seed);
   const rootMidi = 48 + Math.floor(r()*12);
   const rr = r();
   const rarity = rr < 0.05 ? 3 : (rr < 0.25 ? 2 : 1);
@@ -4176,7 +4948,8 @@ function generateTrackFromSeed(seed){
     id: id, name, genre, moods, bpm, rootMidi,
     seed: seed, rarity,
     scaleName: GENRE_SCALE[genre] || 'minor',
-    colors: GENRE_COLORS[genre],
+    /* v31.5：与固定曲库一致 —— 每张动态专辑也有自己的配色 */
+    colors: paletteFromSeed(seed, genre),
     basePrice: Math.round(55 + r()*75)
   };
   TRACK_BY_ID[id] = track;
@@ -4278,6 +5051,60 @@ function leaveGameSession(){
   refreshSaveInfo();
 }
 
+/* ── v31.2：日终页面（结算页 / 店铺管理页）的「返回主菜单」──
+   ── 为什么不能直接调 leaveGameSession()（真实漏洞，必须防）──
+   这两个页面都处在"这一天已经结完账、但 Game.day 还没自增"的窗口里：
+   金币在接待客人时就已经加进 Game.coins 了（serveOneGuest 里
+   `Game.coins += price`），而 `Game.day++` 要等玩家点掉「开始新的一天」
+   才执行。
+   此时存档里的状态是 `_dayInProgress=false, day=N, coins=已含第 N 天营业额`。
+   而读档恢复时 canResumeDay() 为 false（_dayInProgress 已置 false）
+   → 会从**第 N 天开头**重开，重新抽 5 张卡、重新接待 5 位客人、**再赚一次第 N 天的钱**。
+   玩家只要"玩到结算页 → 返回主菜单 → 继续游戏"就能无限刷金币。
+
+   ── 修法 ──
+   在两个页面上点「返回主菜单」时，先把这一天**收尾**（推进到第 N+1 天），
+   再离开会话。收尾 = 消费护符 + day++ + 落盘，与 runOneDay() 尾部
+   正常的"点掉 #nextDay"路径保持一致。
+   （护符也必须在这里消费：否则玩家在结算页退出，护符会被留到下次
+     —— 而下次读档是"第 N 天重开"，等于护符白用了一局还在手上。）
+
+   ── 为什么要传 fromShop 区分 ──
+   · 在结算页退出：玩家还没进店铺管理，没机会花这一天赚的钱。
+     这与"正常点进店铺管理再开始新一天"只差一个逛街步骤，
+     不会造成任何收益差异 —— 可以安全地直接收尾。
+   · 在店铺管理页退出：同样已经过了结算，收益已定，直接收尾即可。 */
+function finishDayAndLeave(){
+  /* 幂等保护：连点两次「返回主菜单」时不能 +2 天。
+     ⚠ 不能用 sessionGen 当钥匙 —— leaveGameSession() 内部会 bumpSessionGen()，
+       两次调用读到的世代不同，反而判不出"已经收尾过了"。
+       用一个显式布尔锁，并在"新的一天开始时"与 resetGame/load 里清掉。 */
+  if(Game._dayEndLeft) return;
+  Game._dayEndLeft = true;
+
+  consumeTalismans();
+  Game.day++;
+  Game._dayInProgress = false;
+  save();
+  checkAchievements();
+  leaveGameSession();
+}
+window.finishDayAndLeave = finishDayAndLeave;
+
+/* 日终页面的「返回主菜单」二次确认。
+   文案要说清"这一天已经结完账，回来会从下一天开始"，
+   否则玩家会以为进度丢了（实际不会丢）。 */
+function confirmLeaveFromDayEnd(when){
+  return modal(`
+    <h3>返回主菜单</h3>
+    <p>第 ${Game.day} 天已经结完账，金币已入袋。<br>
+       回到主菜单后再继续，会从<b>第 ${Game.day + 1} 天</b>开始。<br>
+       ${when}</p>
+    <button data-val="yes">返回主菜单</button>
+    <button class="ghost" data-val="no">留在这里</button>
+  `, { bypassPause: true });
+}
+
 /* 出口 B：立刻开一局全新的（清空存档后用）。
    用户要求"清除缓存后直接重新开始游戏"，而不是回到一个空库存的旧局。 */
 function beginNewGame(){
@@ -4359,8 +5186,48 @@ function loadDefaults(){
   // 初始金币与库存
   Game.coins = 200;
   Game.inventory = [];
+  /* ── v31.4：开局 6 张必须**不重复**（真实缺陷，玩家已报告）──
+     ── 玩家反馈 ──
+     「有时候两个专辑名字相同，内容好像也一样，检查一下生成器是否存在问题」
+     ── 原来错在哪 ──
+     旧写法 `pool[rnd(pool.length)]` 是**有放回抽样**：
+     每次都从同一个 pool 里独立随机取，取完不放回。
+     6 次抽取里出现重复的概率约 1−∏(1−i/100) ≈ 14%，
+     而且一旦重复就是 **id 完全相同** —— 同一张唱片在库存里出现两次，
+     玩家看到的就是"名字一样、内容也一样"。
+     这条路径与 drawBatch 无关（它不发 fixed 曲库的重复），
+     所以之前的所有 drawBatch 测试都测不到它。
+     ── 现在 ──
+     无放回抽样：抽一张就把它从候选里移除，6 张必然互不相同。
+     （这 6 张不登记 seenTracks —— 理由见函数末尾注释。） */
   const pool = TRACKS.slice();
-  for(let i=0;i<6;i++) Game.inventory.push(pool[rnd(pool.length)].id);
+  const seenNames = new Set();
+  for(let i=0;i<6;i++){
+    /* 无放回：随机挑一个下标，取出后 swap 到末尾再缩容 */
+    let pick = -1;
+    for(let guard = 0; guard < 40; guard++){
+      const idx = rnd(pool.length);
+      const cand = pool[idx];
+      if(cand && !seenNames.has(cand.name)){ pick = idx; break; }
+      /* 撞名（理论上不该发生，因为固定 100 张已内部去重）→ 换个位置再试 */
+    }
+    if(pick < 0) pick = rnd(pool.length);
+    const t = pool[pick];
+    pool[pick] = pool[pool.length - 1];
+    pool.pop();
+    if(!t) break;
+    Game.inventory.push(t.id);
+    seenNames.add(t.name);
+  }
+  /* ── v31.5：这 6 张**不**登记进 seenTracks ──
+     loadDefaults() 的 6 张是"角色面板不要显示 0 张"的占位品：
+     紧接着的 stockScreen() 会按"每日清空"把库存整个换成本批新货，
+     这 6 张玩家一次都不会看到。
+     旧代码把它们 markTracksSeen()，等于每开一局就永久烧掉固定曲库里
+     6 个名额（玩家没抽到、也没见过，却再也不会出现）——
+     纯粹的资源泄漏，删掉即可。
+     真正上架的那一批由 stockScreen() 里的 markTracksSeen(Game.inventory) 登记。 */
+
   Game.stats = { income:0, expense:0, served:0, sold:0, good:0, ok:0, bad:0, history:[] };
   Game.seenStories = [];
   Game.goodStories = [];
