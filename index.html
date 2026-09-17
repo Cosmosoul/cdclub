@@ -379,10 +379,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   100%{opacity:0;transform:scale(1.5)}}
 
 /* ── 新手教程：教练条 / 指示环 / 需求面板 ── */
+/* 教练条固定在屏幕顶部，但**必须让开顶部的按钮行**。
+   ── 不让开会怎样（实测踩到）──
+   scr-rec 的 ✕ / ☰、scr-player 的 ✕、scr-shop 的 ← 都在
+   top: calc(14px + safe) 这一行；教练条从 top:0 起铺满整宽，
+   于是这些按钮全被压在下面点不到。
+   而教程恰好有一句"不行就点左上角 ✕ 回去换一张" ——
+   教玩家点一个被自己挡住的按钮，等于把玩家锁在唱片界面里。
+   52px 是顶行按钮（14 padding + 约 22 行高 + 余量）之上再留一点。
+   让开之后教练条覆到的是唱片本体/列表区域，那里没有交互元素。 */
 #coach{position:fixed;left:0;right:0;top:0;z-index:44;display:none;pointer-events:none;
-  padding:calc(10px + env(safe-area-inset-top)) 10px 0}
+  padding:calc(52px + env(safe-area-inset-top)) 10px 0}
 #coach.on{display:block}
-.coach-box{pointer-events:auto;position:relative;display:flex;align-items:flex-start;gap:11px;
+.coach-box{pointer-events:none;position:relative;display:flex;align-items:flex-start;gap:11px;
   background:linear-gradient(100deg,rgba(255,209,102,.97),rgba(255,163,64,.97));
   color:#2a1a00;border-left:5px solid #a1004f;padding:11px 12px 11px 15px;
   box-shadow:0 10px 34px rgba(0,0,0,.55);transform:skewX(-2deg);
@@ -392,21 +401,36 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .coach-ic{font-size:19px;line-height:1.25;flex-shrink:0}
 .coach-tx{flex:1;font-size:13.5px;font-weight:800;line-height:1.6;letter-spacing:.02em}
 .coach-tx small{display:block;font-weight:700;font-size:10.5px;opacity:.7;margin-top:4px;letter-spacing:.07em}
-.coach-skip{border:none;background:rgba(42,26,0,.15);color:#2a1a00;font-family:inherit;font-weight:900;
+/* ── 教练条整体"可点穿"，只有「跳过」按钮自己收事件 ──
+   为什么必须这样：教练条是一条横贯整宽的横幅，教程期间又恰好要玩家
+   去点它下面的东西（库存卡片、「试听」、左上角 ✕）。
+   如果横幅吃掉 pointer-events，这些元素就全被挡住 —— 实测就出现过
+   "教玩家点 ✕ 回去换一张，但 ✕ 被教练条压住点不到"的死局。
+   让横幅变成纯视觉浮层之后：
+     · 横幅之下的按钮照常可点（教程教什么就点得到什么）
+     · 点击仍然会冒泡到 document，所以"点任意位置推进教练条"依旧有效
+     · 「跳过」是唯一需要真实命中的元素，单独把它放回来即可 */
+.coach-skip{pointer-events:auto;border:none;background:rgba(42,26,0,.15);color:#2a1a00;font-family:inherit;font-weight:900;
   font-size:10.5px;letter-spacing:.14em;padding:9px 11px;min-width:54px;flex-shrink:0;cursor:pointer}
 .coach-skip:active{background:rgba(42,26,0,.32)}
 .coach-dots{display:flex;gap:5px;justify-content:center;margin-top:7px;pointer-events:none}
 .coach-dots i{width:15px;height:3px;background:rgba(255,255,255,.24);display:block}
 .coach-dots i.done{background:var(--gold)}
 .coach-dots i.cur{background:var(--magenta);box-shadow:0 0 8px var(--magenta)}
-.coach-hi{position:fixed;z-index:43;pointer-events:none;border:3px solid var(--gold);display:none;
+/* 指示环要盖在教练条之上，否则"高亮库存列表"这类靠上的目标
+   会被横幅压掉一半，玩家看不到到底在指哪里。
+   pointer-events:none 保证它自己不吃事件。 */
+.coach-hi{position:fixed;z-index:45;pointer-events:none;border:3px solid var(--gold);display:none;
   box-shadow:0 0 0 3px rgba(255,209,102,.22),0 0 26px rgba(255,209,102,.7)}
 .coach-hi.on{display:block;animation:coachPulse 1.15s ease-in-out infinite}
 @keyframes coachPulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.04)}}
 
 /* 教程用「客人需求」面板：只在新手教程里出现，
-   真实营业时需求仍然要靠听对话（这是设计，不是缺失）。 */
-#tutDemand{position:fixed;z-index:24;right:10px;top:calc(66px + env(safe-area-inset-top));display:none;
+   真实营业时需求仍然要靠听对话（这是设计，不是缺失）。
+   top 必须落在教练条下方（52 + 约 70 高的横幅 → 132），
+   否则第一个提示"看完对话，右边会列出他要的风格和氛围"
+   会让玩家去找一个被横幅盖住的面板。 */
+#tutDemand{position:fixed;z-index:24;right:10px;top:calc(132px + env(safe-area-inset-top));display:none;
   background:rgba(10,6,18,.92);border:1px solid rgba(255,209,102,.55);border-right:4px solid var(--gold);
   padding:10px 13px;min-width:150px;transform:skewX(-2deg);box-shadow:0 6px 26px rgba(0,0,0,.55)}
 #tutDemand.on{display:block;animation:coachIn .3s cubic-bezier(.2,1.4,.4,1) both}
@@ -601,6 +625,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
       · 存档仅保存在本机浏览器，清缓存会丢失
     </div>
     <button class="menu-item" style="margin-top:10px;width:100%" id="btnReset"><span class="idx">!</span><span class="tx">清除存档并重新开始</span></button>
+    <button class="menu-item cy" style="margin-top:10px;width:100%" id="btnReplayTut"><span class="idx">?</span><span class="tx">重看新手教程</span></button>
+    <div style="font-size:11px;color:var(--muted);line-height:1.8;padding:6px 0">
+      重看教程会清空当前存档，并从"第 1 天之前"的演示重新开始。
+    </div>
     <div class="h-sec">关于</div>
     <div style="font-size:12.5px;color:var(--muted);line-height:2">
       · 版本 v0.4<br>· 所有音乐 / 封面均由程序实时生成<br>· 同一张唱片永远听到同一首歌
@@ -2531,6 +2559,44 @@ function rarityLabel(t){
 /* ------------------------- 8. 存档 ------------------------- */
 const SAVE_KEY = 'record_shop_save_v04';
 
+/* v30/v31：新手教程的"已看过"标记。
+   ── 为什么定义在这里（存档节）而不是和 Tutorial 放一起 ──
+   它要**先于**使用者出现。v30 曾把它放在 4600 行附近，而 2690 行的
+   resetGame() 就要读它 —— 那是一次真实的 TDZ（ReferenceError），
+   当时靠 try{}catch{} 把错误吞掉了，等于让"删标记"这一步静默失效。
+   放在这里，常量先于所有使用者，不需要任何防御性包裹。
+   ── v31：resetGame() 已经不再删除它 ──
+   理由见 resetGame() 内的说明（它是"人"的属性，不是"存档"的属性）。 */
+const TUTORIAL_KEY = 'record_shop_tutorial_v1';
+function tutorialDone(){ try{ return localStorage.getItem(TUTORIAL_KEY) === '1'; }catch(e){ return false; } }
+function markTutorialDone(){ try{ localStorage.setItem(TUTORIAL_KEY, '1'); }catch(e){} }
+function clearTutorialDone(){ try{ localStorage.removeItem(TUTORIAL_KEY); }catch(e){} }
+
+/* ── v31.1 会话取消令牌（Canceller）──
+   ── 为什么必须有它 ──
+   abortGameSession() 靠"把挂起的 Promise 解掉"来让旧协程退栈：
+   解掉之后旧协程只是排进微任务队列，**还没真的返回**。
+   如果紧接着又开一局（清档后立刻重启 / 返回主菜单后马上点开始游戏），
+   那批微任务就会在新会话开始**之后**才恢复执行 ——
+   此时 Game.abort 已经被新会话复位成 false，于是：
+     · 旧协程的 `if(Game.abort) return` 检查全部失效
+     · 它继续往下跑：重新 openInventoryForGuest() → 把 scr-inv 又打开一次
+       → 玩家看到"新的一局刚开，库存界面莫名其妙浮在外面"
+     · 更糟的变体：它跑完整套接待，给旧故事发钱、扣不存在的库存
+   ── 怎么修 ──
+   给每个会话发一个世代令牌，abort 时**自增**。旧协程每一处守卫都同时
+   检查"我的令牌是否还是当前的"，一旦不是就无条件退栈 ——
+   不再依赖 Game.abort 这个会被新会话复用的标志。
+     · `_gen`（Game 上，已有）负责日循环层面
+     · `sessionGen`（这里）负责"这一局会话"层面，覆盖 await 中的散点检查
+   ── 与 _gen 的区别 ──
+   _gen 是 gameLoop 的 while 条件；sessionGen 是**每一处 await 之后**的散点。
+   两者互补：只靠 _gen 的话，循环体内的 await 恢复执行时不会被拦住。 */
+let sessionGen = 0;
+function currentSessionGen(){ return sessionGen; }
+function bumpSessionGen(){ sessionGen++; return sessionGen; }
+window.currentSessionGen = currentSessionGen;
+
 function save(){
   try{
     const data = {
@@ -2565,6 +2631,9 @@ function save(){
       /* v21：正在服务第几位客人 / 该客人是否已成交（防止中途退出后重复计价） */
       _curGuest: (typeof Game._curGuest === 'number' ? Game._curGuest : -1),
       _curGuestDone: !!Game._curGuestDone
+      /* v31：_tutorialDay 已随教程重构删除。
+         教程不再是"被改造的一天"，而是第 1 天之前的独立阶段，
+         所以不再需要这个字段 —— 该不该跑教程完全由 TUTORIAL_KEY 决定。 */
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     refreshSaveInfo();
@@ -2614,6 +2683,8 @@ function load(){
       /* v21：局内进度原子性 */
       _curGuest: (typeof d._curGuest === 'number' ? d._curGuest : -1),
       _curGuestDone: !!d._curGuestDone
+      /* v31：不再读 d._tutorialDay（字段已删除）。
+         旧存档里残留的这个键会被自然忽略，不写迁移代码。 */
     });
     /* v30：恢复金边标记表（必须在 Object.assign 之后，
        因为它写的是模块级 GOLD_IDS 而不是 Game 的字段）。 */
@@ -2661,14 +2732,18 @@ function resetGame(){
   Game._dayMoods = new Set(); Game._dayGood = 0;
   Game.seenStories = []; Game.goodStories = []; Game.usedStories = [];
   Game._rareSold = 0; Game._bigSale = false; Game._perfectDay = false; Game._usedAd = false;
+  Game._curGuest = -1; Game._curGuestDone = false;
   /* v30：金边标记表必须跟着清 —— 它不在 Game 上（见 7.3 说明）。
      漏掉这一句的后果是"新档里昨天的金边还留着"。 */
   clearGoldMarks();
-  /* v30：新手教程只在"真正的新档"里再跑一次。
-     用 localStorage 之外的一个独立键，因为 resetGame() 会清掉主存档，
-     而教程的"已看过"状态应该比单局进度更持久一点（换档想重看，
-     走设置里的「重看新手教程」按钮）。 */
-  try{ localStorage.removeItem(TUTORIAL_KEY); }catch(e){}
+  /* ── v31 修复：**不再**删除 TUTORIAL_KEY ──
+     v30 在这里删了它，理由是"清档 = 我要从头再来，所以重看教程"。
+     但那正是用户报告的 bug 源头：
+       主菜单「开始游戏」→ 有存档 → 弹窗选「重新开始」→ resetGame()
+       → TUTORIAL_KEY 被删 → beginNewGame() → Tutorial.shouldRun()
+       又为真 → 玩家被扔回教程，永远进不了真正的第 1 天。
+     "看过教程"是玩家**这个人**的属性，不是这一局存档的属性，
+     所以它必须比存档更持久。想重看请用设置里的「重看新手教程」。 */
   localStorage.removeItem(SAVE_KEY);
   refreshSaveInfo();
 }
@@ -2871,6 +2946,16 @@ function renderInventory(selectable, onPick){
    现在把 resolver 记下来，会话作废时主动解成 null。 */
 let _invWaitResolve = null;
 function openInventoryForGuest(){
+  /* v31.1：捕获调用方所属的会话令牌。
+     ── 为什么需要 ──
+     这个 Promise 是"旧协程被解挂之后又复活"最危险的落点：
+       RecView.cancel() / cancelInvWait() 只是把挂起的 Promise 解掉，
+       旧协程要等微任务恢复才检查守卫。若这期间新会话已经开了一局
+       （清档后立刻重启），旧协程恢复时 Game.abort 已经是 false，
+       它就会**再次打开 scr-inv** —— 玩家看到"新局刚开，库存界面浮在外面"。
+     ── 怎么用它 ──
+     两处 await 之后都比对：不是在同一个会话里打开的，就不要把它显示出来。 */
+  const myGen = currentSessionGen();
   return new Promise(function(resolve){
     var done = false;
     function fin(t){
@@ -2884,7 +2969,28 @@ function openInventoryForGuest(){
       $('scr-inv').classList.remove('on');
       fin(t);
     });
-    $('scr-inv').classList.add('on');
+    /* v31.1：会话已换 → 绝不再把库存页挂到新局面前 */
+    if(Game.abort || sessionGen !== myGen){ fin(null); return; }
+    /* v31 修复：这里**必须**走 showScreen()。这是玩家报告的误触路径的原点。
+       ── 穿透是怎么发生的 ──
+       对话最后一句是"点屏幕任意位置"推进的（Dialogue 挂在 document 的
+       pointerdown 上）。玩家那一下 pointerdown 让对话 finish() → 唤醒
+       serveOneGuest 的 await → 同一个微任务里 openInventoryForGuest()
+       把 scr-inv 打开。紧接着浏览器才派发这一下的 pointerup 与 click，
+       此时手指下面已经是**刚渲染出来的唱片卡**，于是 click 直接落在
+       card.onclick 上 → RecView.open() → 玩家"从对话跳到了唱片界面"。
+       ── 为什么改成 showScreen ──
+       旧实现是 $('scr-inv').classList.add('on')，**绕过了 showScreen**，
+       因而也绕过了 hookShowScreen() 那把锁 —— 这条最容易穿透的路径
+       恰恰是唯一没有防护的。走 showScreen 后：
+         · 自动获得输入锁（下面再把它延长到 260ms）
+         · 自动维护 _lastShownScreen，后续换屏的锁判定不会错位
+       ── 为什么是 260ms 而不是默认 220ms ──
+       这条路径上"一次点按要连续触发两件事"（推进对话 + 打开库存），
+       是全局穿透概率最高的一处。260ms 仍远短于人"看到界面后"的反应
+       时间，不会产生阻塞感。 */
+    showScreen('scr-inv');
+    lockInput(260);
   });
 }
 function cancelInvWait(){
@@ -3051,18 +3157,40 @@ function hashStr(s){
   return Math.abs(h);
 }
 
+/* ── v31 修复：走路/转身动画必须防"客人中途被撤下" ──
+   ── 原 bug（真实崩溃）──
+   walkTo / tweenRot 直接在 requestAnimationFrame 回调里读
+   `guestGroup.position`。而 abortGameSession() 第 5 步会把
+   guestGroup 置为 null（"撤掉台上还站着的客人"）。
+   如果玩家在客人**正走进来时**点了「暂停 → 返回主菜单」
+   （或清档、或点开始游戏触发 abortGameSession），
+   下一帧就会抛：
+       TypeError: Cannot read properties of null (reading 'position')
+   更糟的是它不是"只是一条报错"：RAF 循环被异常打断后
+   resolve() 永远不会被调用 → spawnGuest 的 await 永久挂起 →
+   serveOneGuest → runOneDay → gameLoop **整条协程链死锁**。
+   玩家看到的就是"点了开始游戏却一直没有进入第二天"。
+   ── 修法 ──
+    · 捕获一个本地引用 g，并在每帧开头判空
+    · 一旦发现目标已消失，立刻 resolve() 让调用方继续走下去
+      （调用方紧接着的 if(Game.abort) return 会干净退栈） */
 function walkTo(tx, tz, dur){
   return new Promise(resolve => {
-    const sx = guestGroup.position.x, sz = guestGroup.position.z;
+    const g = guestGroup;
+    if(!g){ resolve(); return; }
+    const sx = g.position.x, sz = g.position.z;
     const t0 = performance.now();
     const step = () => {
+      /* 每一帧都要重新确认：guestGroup 可能已被 abortGameSession 撤掉，
+         也可能被下一次 spawnGuest 换成了新对象。两种都不该继续动。 */
+      if(!guestGroup || guestGroup !== g){ resolve(); return; }
       const p = clamp((performance.now()-t0)/dur, 0, 1);
       const e = p<0.5 ? 2*p*p : 1-Math.pow(-2*p+2,2)/2;
-      guestGroup.position.x = sx + (tx-sx)*e;
-      guestGroup.position.z = sz + (tz-sz)*e;
+      g.position.x = sx + (tx-sx)*e;
+      g.position.z = sz + (tz-sz)*e;
       // 走路摆动
       const sw = Math.sin(performance.now()/110) * 0.35 * (1-p);
-      const u = guestGroup.userData;
+      const u = g.userData;
       if(u.legL){ u.legL.rotation.x = sw; u.legR.rotation.x = -sw; }
       if(u.armL){ u.armL.rotation.x = -sw*0.7; u.armR.rotation.x = sw*0.7; }
       if(p < 1) requestAnimationFrame(step);
@@ -3078,8 +3206,11 @@ function walkTo(tx, tz, dur){
 
 function tweenRot(obj, from, to, dur){
   return new Promise(resolve => {
+    /* 同 walkTo：obj 可能是 guestGroup，而它随时可能被撤下 */
+    if(!obj){ resolve(); return; }
     const t0 = performance.now();
     const step = () => {
+      if(!obj || (obj === guestGroup && !guestGroup)){ resolve(); return; }
       const p = clamp((performance.now()-t0)/dur, 0, 1);
       obj.rotation.y = from + (to-from) * (1-Math.pow(1-p,3));
       if(p<1) requestAnimationFrame(step); else resolve();
@@ -3100,19 +3231,38 @@ async function guestLeave(){
 async function runOneDay(){
   if(Game.abort) return;
 
-  /* v30：第一次开店之前跑一遍新手教程。
-     做法是把这一天**布置成"已经抽完卡"的样子**（预设客人 + 3 张演示唱片），
-     于是下面的 canResumeDay() 自然返回 true，既不走 stockScreen()
-     也不会重置当天统计 —— 后面 serveOneGuest / reportScreen /
-     shopManageScreen 一行都不用改。这正是"复用真实流程"的好处：
-     教程跑的就是正片代码，玩家学到的手感与之后完全一致。
+  /* ── v31.1 防御性兜底：普通营业日不承认任何教程标志 ──
+     serveOneGuest 的第一行守卫是 `if(Game.abort || Tutorial._aborted) return;`，
+     它存在的意义只是"教程被跳过时，把教程那一次接待干净退栈"。
+     但 `_aborted` 是个**跨函数存活**的标志，一旦某条路径忘了清它，
+     整局游戏就会永久失去接待能力（客人进门即离场、sold 恒为 0）。
+     gameLoop 已经在教程阶段结束后清过一次（主要修复点）；这里再清一次，
+     是为了让不变量在"营业日"这个边界上**自我闭合** ——
+     将来无论谁新增一条 runOneDay 的调用路径，都不必记得这件事。
+     幂等且无害：教程期间根本不会走到 runOneDay。 */
+  Tutorial._aborted = false;
 
-     位置必须在 canResumeDay() 之前，否则本函数会先按"全新的一天"清场。 */
-  if(Tutorial.shouldRun()) Tutorial.prepareDay();
+  /* v31 重构：新手教程不再"劫持第 1 天"。
+     ── 用户的要求 ──
+     「新手教学发生在第一天之前，无论是跳过还是正常结束，结束后都应该
+       重新进入第一天流程：抽 5 张卡进库存；确保第一天开始前库存是空的！」
+     ── 旧做法为什么不对 ──
+     v30 把第 1 天**改造成**教程日（预设客人 + 3 张演示唱片 + _tutorialDay），
+     于是教程跑完时 day 已经 ++ 成 2，玩家"真正的第 1 天"变成了第 2 天；
+     而且演示用的 3 张唱片会留到第 2 天的抽卡之前，库存不是干净的。
+     ── 现在 ──
+     教程是 gameLoop 里 runOneDay() **之前**的一个独立阶段
+     （见 Tutorial.runDemo）。它跑完时 Game.day 仍然是 1、库存被清空、
+     当日统计归零，于是本函数会照常走下面的 stockScreen() ——
+     也就是玩家要的"重新进入第一天流程，抽 5 张卡进库存"。 */
 
   /* v20：若当天已抽完卡且未服务满 5 位客人，则接着上次进度继续，
      不再重新抽卡、不再回退到当天早上。 */
   const resuming = canResumeDay();
+  /* v31.1：本日所属会话令牌。stockScreen / serveOneGuest 都是 await 点，
+     恢复执行时可能"这一局已经被换掉了"（清档后立刻重启是最常见的路径）。 */
+  const myGen = currentSessionGen();
+  const dead = () => Game.abort || sessionGen !== myGen;
 
   if(!resuming){
     Game.guestsToday = 0;
@@ -3140,21 +3290,21 @@ async function runOneDay(){
 
   if(!resuming){
     await stockScreen();
-    if(Game.abort) return;
+    if(dead()) return;
     /* 抽卡完成 → 标记当天进行中并落盘，这样返回主菜单也不会重抽 */
     Game._dayInProgress = true;
     Game.guestsToday = 0;
     save();
   }
 
-  /* v30：教程日只服务 1 位客人。
-     写在运行时求值而不是常量，是为了让教程接进来时不用改这一段的结构。 */
-  const maxGuests = Game._tutorialDay ? 1 : 5;
+  /* v31：教程不再借道这里，所以每天都是标准的 5 位客人。
+     原先的 `Game._tutorialDay ? 1 : 5` 已随教程重构一并删除。 */
+  const maxGuests = 5;
   const stories = Game.dayStories || [];
   $('pauseBtn').classList.add('on');
 
   for(let i = Game.guestsToday; i < maxGuests; i++){
-    if(Game.abort) return;
+    if(dead()) return;
     /* v21：记录"正在服务第几位客人"+成交是否已落定。
        中途返回主菜单时，若这位客人已经成交（金币/库存已扣），
        就把她算作已服务，避免重新接待时二次计价。 */
@@ -3162,7 +3312,11 @@ async function runOneDay(){
     Game._curGuestDone = false;
     save();
     await serveOneGuest(stories[i] || null);
-    if(Game.abort){
+    /* v31.1：这里原本只看 Game.abort。但"清档后立刻重启"会在同一个同步块里
+       把 Game.abort 复位成 false，于是旧协程恢复执行时看到的是 false，
+       于是它继续往下跑完整套接待（给已经不存在的局面发钱/扣库存）。
+       改成 dead() 后，只要会话令牌变了就无条件退栈。 */
+    if(dead()){
       if(Game._curGuestDone){ Game.guestsToday = i + 1; }
       Game._curGuest = -1;
       Game._curGuestDone = false;
@@ -3174,7 +3328,7 @@ async function runOneDay(){
     Game.guestsToday = i + 1;
     save();
     checkAchievements();
-    if(Game.abort) return;
+    if(dead()) return;
     await wait(300);
   }
 
@@ -3184,22 +3338,32 @@ async function runOneDay(){
   Game._dayInProgress = false;
   save();
 
-  /* v30：教程日的收尾。放在这里（客人循环之后、结算之前）是因为
-     这正是"这一天的营业结束了"的那一刻：
-       · 让教练条把最后两句说完（听需求→看库存→试听→交付 / 今天先到这里）
-       · 把 _tutorialDay 落回 false —— 漏了它，第 2 天也会只服务 1 位客人 */
-  if(Game._tutorialDay && Tutorial.active){
-    Tutorial.deliveredGood();
-    await wait(2400);
-    Tutorial.end();
-  }
-  Game._tutorialDay = false;
-
-  if(Game.abort) return;
+  if(dead()) return;
   await reportScreen();
-  if(Game.abort) return;
+  if(dead()) return;
+
+  /* v31 修复：护符只保一局，必须真的销毁。
+     ── 为什么消费点在这里（报告之后、店铺管理之前）──
+     护符是在第 N 天的店铺管理里买下的，第 N+1 天抽卡时生效、
+     接待客人时产生效果，日结报告里显示"已生效"。
+     报告看完，"这一局"就正式结束了 —— 此刻销毁，玩家回到
+     店铺管理时会看到护符重新变成"买下"，也就是"第二天要重新买"。
+     ── 为什么不放在 Game.day++ 之后 ──
+     那一段在玩家中途 abort 时不会被执行，而 abort 恰恰是最容易
+     漏掉消费的路径；而且店铺管理界面会先被看到，那时护符还必须
+     是"已装备"状态。
+     ── v30 的 bug ──
+     consumeTalismans() 当时**没有任何调用点**（只有定义），
+     所以护符永久生效、买一次用到底，与界面文案
+     「仅下一局生效」「当天结算后消耗」完全不符。 */
+  consumeTalismans();
+  save();
+  /* 护符使用次数会推动成就 a17「护符常客」，所以消费后要立刻判一次 */
+  checkAchievements();
+  if(dead()) return;
+
   await shopManageScreen();
-  if(Game.abort) return;
+  if(dead()) return;
 
   Game.day++;
   Game._dayInProgress = false;
@@ -3221,26 +3385,46 @@ async function serveOneGuest(story){
   if(!Game.seenStories) Game.seenStories = [];
   if(Game.seenStories.indexOf(story.id) < 0) Game.seenStories.push(story.id);
 
+  /* ── v31.1：捕获本次接待所属的会话令牌 ──
+     serveOneGuest 有 6 处 await，每一处恢复执行时都可能"这一局已经被换掉了"。
+     光看 Game.abort 不够：新会话会把它复位成 false（见 Canceller 说明）。
+     所以这里捕获令牌，并在每个 await 之后比对 `dead()`。 */
+  const myGen = currentSessionGen();
+  const dead = () => Game.abort || sessionGen !== myGen || Tutorial._aborted;
+
   await spawnGuest(story);
+  /* v31：教程阶段被「跳过」时也要立刻退栈。
+     _aborted 与 Game.abort 的区别：前者只结束"教程这一段"，
+     后者是整局会话作废。跳过教程后 serveOneGuest 必须干净返回，
+     否则它会在教程清场之后继续跑一整套接待（还会发金币）。 */
+  if(dead()) return;
   /* v30 教程：客人进门时挂出教练条与需求面板。
      这三处 if(Tutorial.active) 是教程与正片之间**唯一**的耦合点，
-     教程未激活时它们不产生任何行为变化。 */
-  if(Tutorial.active) Tutorial.guestEnter();
+     教程未激活时它们不产生任何行为变化。
+     这里 await 是必要的：guestEnter() 内部要给"开场欢迎语"留出阅读时间，
+     否则它会立刻被"听对话"的提示覆盖掉（玩家一个字都没看清）。 */
+  if(Tutorial.active) await Tutorial.guestEnter();
+  if(dead()) return;
   await Dialogue.play(story.lines);
-  if(Game.abort) return;
+  if(dead()) return;
 
   let chosen = null, j = null;
   while(!chosen){
-    if(Game.abort) return;
+    if(dead()) return;
     if(Tutorial.active) Tutorial.beforeInventory();
     const track = await openInventoryForGuest();
     /* v28：null = 会话被作废（清空存档 / 回主菜单），干净退栈。
        少了这一句，null 会被拿去 RecView.open()，进而读 track.name 报错。 */
     if(track === null || track === undefined) return;
-    if(Game.abort) return;
+    if(dead()) return;
     if(Tutorial.active) Tutorial.beforeRecord();
     const action = await RecView.open(track);
-    if(action !== 'give'){ if(Game.abort) return; continue; }
+    /* ⚠ 这里是上面那个 bug 最危险的落点：
+       RecView.cancel() 把 action 解成 'abort'，但旧协程要等微任务恢复才检查。
+       如果这期间新会话已经把 Game.abort 复位，`action !== 'give'` 分支里的
+       `if(Game.abort) return` 就会失效 → continue → 重新 openInventoryForGuest()
+       → 新局开局就浮着一个库存界面。所以必须用 dead()。 */
+    if(action !== 'give'){ if(dead()) return; continue; }
     j = judge(track, story);
 
     /* v30 教程：交错了**不消耗唱片**，先讲清楚为什么不对，再让玩家重来一次。
@@ -3254,13 +3438,20 @@ async function serveOneGuest(story){
       continue;
     }
     chosen = track;
-    if(Game.abort) return;
+    /* ⚠ 同理：走到这里说明成交即将落定（下面就是加金币/扣库存）。
+       若会话已在 await 期间被换掉，必须在这里断掉，
+       否则会给一个已经不存在的局面记账。 */
+    if(dead()) return;
   }
   if(!j) j = judge(chosen, story);
   /* v30 结算公式。改动点：
        · 删掉 decorMult()/shopMult()（旧经济的两个来源），换成唯一的 themeMult()
        · 新增金边加成 goldMult()（只有这张唱片是金边才有）
-       · 新增黄护符 amberMult()（对玩家隐藏的 +10%）
+       · 新增黄护符加成：直接内联为 `hasTal('amber') ? AMBER_MULT : 1`
+         （曾写成一个 amberMult() 函数，但它只有一个调用点，
+           而且黄护符的规则本身是"对玩家隐藏的 +10%"——
+           一个名字直白的函数反而更容易被随手复用到别处、
+           把这个隐藏规则泄露到不该有它的地方，所以内联。）
      相乘顺序不影响结果（都是乘法），但**四舍五入只做最后一次**，
      中间不取整 —— 否则多个小倍率各自取整会累积误差，
      让"提高 10%"在某些价格上变成 +0 或 +20。 */
@@ -3449,6 +3640,13 @@ function drawBatch(size, goldChance, guarantee){
 }
 
 function stockScreen(){
+  /* v31.1：进货弹窗是"清档后立刻重启"最容易撞上的 await 点 ——
+     玩家很可能就停在「今日进货」这个弹窗上，此时从设置里清档。
+     旧会话的弹窗 Promise 不会被 abortGameSession 解掉（modal 不在解挂清单里），
+     一旦它稍后 resolve（例如玩家点到残留按钮），回调会照常执行：
+     扣金币、覆盖 Game.inventory、把旧的一批故事塞进新局。
+     所以回调进来先核对自己的会话令牌，不是自己的会话就整段放弃。 */
+  const myGen = currentSessionGen();
   return new Promise(resolve => {
     const day = Game.day;
     const bal = '<b style="color:var(--gold)">' + Game.coins + '</b>';
@@ -3474,6 +3672,10 @@ function stockScreen(){
     const html = '<h3>今日进货</h3><p>第 ' + day + ' 天 · 金币 ' + bal + '</p>' + goldTip + talTip +
       row('normal', false) + row('fine', false) + row('rare', false);
     modal(html).then(async val => {
+      /* v31.1：会话已被换掉 → 这一批进货属于已经作废的局面，直接放弃。
+         不做这一步的话，旧弹窗的回调会扣新局的金币、并把新局的库存
+         覆盖成旧会话抽出来的那批唱片。 */
+      if(Game.abort || sessionGen !== myGen){ resolve(); return; }
       if(!RESTOCK[val]) val = 'normal';
       let cfg = RESTOCK[val];
       /* 金币不足自动降级：不要因为一次误点就把玩家卡在"没进货"的状态 */
@@ -3632,6 +3834,13 @@ function reportScreen(){
         }).join('');
     }
 
+    /* v31 修复：结算页不走 showScreen()（它是直接 classList.add('on')），
+       所以拿不到 hookShowScreen() 的那把锁。这很危险 —— 结算页是
+       "客人告别弹窗 → 页面整体换掉"的落点，正好接着一串连点。
+       表现为：结算页刚出现，玩家最后那一下 click 已经落在
+       #repNext（"进入店铺管理"）上了，于是直接跳过了看营业额。
+       这里补一把同款的锁。 */
+    lockInput(INPUT_LOCK_MS);
     $('scr-report').classList.add('on');
     $('scr-report').innerHTML = `
       <div class="rep-burst"></div>
@@ -3747,6 +3956,12 @@ function shopManageScreen(){
       }).join('') + '</div>';
     }
 
+    /* v31 修复：店铺管理也不走 showScreen()，同样缺锁。
+       它是"结算页 → 开始新的一天"的落点，紧跟着一串连点。
+       ⚠ 只在**首次打开**时上锁：render() 在每次买装潢/护符之后都会被
+       再调一次，若每次都锁，玩家买完东西会觉得"卡了一下才反应"。
+       用 _shopEntered 把"进屏"和"重绘"区分开。 */
+    let shopEntered = false;
     function render(){
       const ownedThemes = ownsThemeCount();
       const equipped = Game.talismans || [];
@@ -3759,6 +3974,10 @@ function shopManageScreen(){
           '这些护符会在下一天开始时生效，当天结算后消耗</div></div>';
       }
 
+      if(!shopEntered){
+        shopEntered = true;
+        lockInput(INPUT_LOCK_MS);
+      }
       $('scr-shop').classList.add('on');
       $('scr-shop').innerHTML = `
         <div class="topbar"><button class="tbtn" id="shopBack">←</button><h2>店铺管理</h2><span style="color:var(--gold);font-weight:900;font-size:14px" class="num">${Game.coins} 金币</span></div>
@@ -4000,12 +4219,35 @@ function abortGameSession(){
         旧循环醒来发现令牌过期会立刻退栈，不会和新循环抢客人。 */
   Game._gen = (Game._gen || 0) + 1;
   Game.abort = true;
+  /* v31.1：同时作废"会话令牌"。
+     为什么两个都要 —— `_gen` 只是 gameLoop 的 while 条件，它管不住
+     循环体内那些已经 await 到一半的协程；而 `Game.abort` 会被新会话
+     （beginNewGame）复位成 false。两个都靠不住的时候，就需要一个
+     **只增不减、且不被任何重启路径复位**的令牌：sessionGen。
+     旧协程在每个 await 之后比对它，发现不是自己那一代就无条件退栈。 */
+  bumpSessionGen();
 
   /* 2) 解掉所有"挂起的等待"。这是本次修复的核心：
         库存选择 / 唱片界面各自持有一个永不 resolve 的 Promise，
         不解掉的话对应协程会永远卡在 await 上（真死锁，不报错）。 */
   cancelInvWait();
   if(typeof RecView !== 'undefined' && RecView.cancel) RecView.cancel();
+
+  /* v31：教程中途离开会话时，把被污染的累计字段还原掉。
+     漏了这一句的后果：玩家在教程里返回主菜单，演示那一单的
+     stats / 成就 / seenStories 会原样落进存档 —— 凭空多出几个成就、
+     累计收入虚高，而且再也弹不出那些成就提示。
+     位置放在第 3 步（撤对话框）之后：restoreStats() 本身不碰 DOM/协程，
+     但放在会话复位的中段可以让"数据回滚"和"界面清场"读起来是一件事。 */
+  if(typeof Tutorial !== 'undefined' && Tutorial.restoreStats){
+    try{ Tutorial.restoreStats(); }catch(e){}
+    /* 教练条与需求面板是 DOM 状态，不会自己消失 —— 它们挂在 body 上，
+       不归 showScreen() 管（showScreen 只切换 .screen）。不主动收掉的话，
+       回到主菜单后顶部还会浮着一条"点屏幕任意位置可以让对话往下走"。 */
+    try{ Coach.hide(); }catch(e){}
+    try{ TutDemand.hide(); }catch(e){}
+    try{ Tutorial.active = false; Tutorial._aborted = false; }catch(e){}
+  }
 
   /* 3) 撤对话框，并作废"因暂停被推迟、尚未执行"的 Dialogue.play() */
   hideDialogue(true);
@@ -4134,12 +4376,53 @@ async function gameLoop(gen){
   /* v21：世代令牌。重新点「开始游戏」时 _gen 会自增，
      旧循环发现自己的令牌过期就立刻退栈，不会和新循环抢客人。 */
   if(typeof gen !== 'number') gen = Game._gen;
-  while(!Game.abort && Game._gen === gen){
+  /* v31.1：会话令牌也要在入口捕获。
+     `_gen` 只能拦住"下一轮 while 判断"，拦不住循环体内 await 到一半的协程；
+     两者一起看才严密（详见 Canceller 说明）。 */
+  const myGen = currentSessionGen();
+  const dead = () => Game.abort || Game._gen !== gen || sessionGen !== myGen;
+  while(!dead()){
+    /* v31：新手教程是"第 1 天开始之前"的独立阶段。
+       ── 为什么放在 runOneDay 之前、而不是塞进 runOneDay ──
+       塞进去就必须"改造第 1 天"（v30 的做法），于是教程跑完 day 已经
+       变成 2、演示唱片还留在库存里 —— 用户明确否掉了这个效果。
+       放在这里，教程跑完时 day 仍是 1、库存已被 Tutorial.finish() 清空，
+       紧接着的 runOneDay 就是一条**干净的第 1 天**：抽 5 张卡进库存。
+       ── 为什么每轮循环都判一次 ──
+       shouldRun() 读的是 localStorage 的 TUTORIAL_KEY。玩家在教程中途
+       返回主菜单时它还没写入，下次进来就会重演一遍 —— 这是刻意的
+       （见 Tutorial 顶部的状态机说明）。 */
+    if(Tutorial.shouldRun()){
+      await Tutorial.runDemo();
+      if(dead()) break;
+    }
+    /* ── v31.1 关键修复：教程段落结束后必须清掉 _aborted ──
+       ── 不清会怎样（真实 bug，玩家已报告"进了第一天却不能玩"）──
+       _aborted = "这一次 runDemo 被玩家跳过"。它的生命周期**只到
+       runDemo 返回为止**，但没有任何地方会把它清回 false：
+         · finish() 里不敢清 —— abort() 靠它在同一个微任务里让
+           "正飞着"的 serveOneGuest 从 await 处干净退栈（清了就等于
+           教程被跳过了却还在演，v30 踩过这个坑）；
+         · abortGameSession() 会清，但它只在"回主菜单 / 清档"时走，
+           跳过教程**不会**经过它。
+       于是 `_aborted` 永久停在 true。而 serveOneGuest 的第一行守卫正是
+           if(Game.abort || Tutorial._aborted) return;
+       → 此后**每一天的每一位客人**一进门就被这条路 return 掉：
+         没有对话、没有需求、打不开「选唱片」界面、
+         stats.sold 永远是 0，玩家在店里干看着，赚不到任何金币。
+       ── 为什么修在这里 ──
+       gameLoop 是教程阶段的**唯一**拥有者（runDemo 只在这里被 await）。
+       runDemo 一返回，"教程"这个概念就结束了，标志也该随之作废 ——
+       下一行 runOneDay() 开始的就是一条普通营业日。
+       放在 runOneDay() 里也行，但那里语义上不拥有教程状态，
+       将来若有人新增 runOneDay 的调用点就会再次漏掉。 */
+    Tutorial._aborted = false;
     await runOneDay();
   }
   /* 只有"自己仍然是当前世代"时才清 abort，
-     否则会把新循环刚设好的 abort=false 覆盖掉。 */
-  if(Game._gen === gen) Game.abort = false;
+     否则会把新循环刚设好的 abort=false 覆盖掉。
+     v31.1：会话令牌同样要判 —— 旧循环退栈时不能去动新会话的 abort。 */
+  if(Game._gen === gen && sessionGen === myGen) Game.abort = false;
 }
 
 /* ------------------------- 22. 暂停按钮 ------------------------- */
@@ -4309,6 +4592,30 @@ $('btnReset').onclick = ()=>{
           （开新档 = 从第 1 天开始），因此采用出口 B。 */
     beginNewGame();
     toast('存档已清除，开始新的一局');
+  });
+};
+
+/* v31：「重看新手教程」。
+   为什么需要一个独立按钮 —— v31 让 TUTORIAL_KEY 不再随清档删除
+   （那是修复"清档后永远回到教程"的关键），于是"我想再看一遍"就需要
+   一个显式的出口。做法就是清掉那个标记，然后重启。
+   为什么顺带清档 —— 教程必须发生在"第 1 天之前"，而旧存档的 day/inventory
+   都是既成事实，硬把教程塞在中间会出现"第 7 天之后突然演第 1 天之前的教程"
+   这种时间线错乱。所以语义定为"重看教程 = 从第 1 天之前重开一局"。 */
+$('btnReplayTut').onclick = ()=>{
+  modal(`
+    <h3>重看新手教程</h3>
+    <p>教程发生在<b>第 1 天开始之前</b>。<br>重看会清空当前存档，从演示重新开始。<br>确定吗？</p>
+    <button data-val="yes">清档并重看教程</button>
+    <button class="ghost" data-val="no">取消</button>
+  `, { bypassPause: true }).then(v=>{
+    if(v !== 'yes') return;
+    resetGame();
+    loadDefaults();
+    clearTutorialDone();     /* ← 唯一的区别：让 shouldRun() 重新为真 */
+    refreshSaveInfo();
+    beginNewGame();
+    toast('开始新手教程');
   });
 };
 
@@ -4539,24 +4846,56 @@ const TUT_STORY = {
   }
 };
 
-const TUTORIAL_KEY = 'record_shop_tutorial_v1';
-function tutorialDone(){ try{ return localStorage.getItem(TUTORIAL_KEY) === '1'; }catch(e){ return false; } }
-function markTutorialDone(){ try{ localStorage.setItem(TUTORIAL_KEY, '1'); }catch(e){} }
+/* 教程的"已看过"标记（TUTORIAL_KEY / tutorialDone / markTutorialDone）
+   定义在第 8 节「存档」里 —— resetGame() 需要用到它，必须在之前。 */
 
 /* -------- 教练条 -------- */
 const Coach = {
-  steps: [], idx: 0, _t: null, _raf: null, _resolveTarget: null,
+  steps: [], idx: 0, _t: null, _raf: null, _resolveTarget: null, _lastShowAt: 0,
+  /* 一组步骤至少展示这么久才允许推进。
+     为什么需要它：推进是"点屏幕任意位置"触发的（见下面 bindAdvance），
+     而玩家常常正连点着让对话往前走 —— 没有这个下限的话，
+     一组两条提示会被一次连点直接冲过去，第二条等于没显示。
+     1100ms 的依据：读一句 20 字左右的提示约需 1 秒，
+     而"连点两下"的间隔通常只有 100~250ms，所以不会被误推进。 */
+  MIN_STEP_MS: 1100,
   init(){
     const el = $('coach');
     if(!el || el._bound) return;
     el._bound = true;
     const skip = $('coachSkip');
-    if(skip) skip.onclick = function(){ Tutorial.abort(); };
+    if(skip) skip.onclick = function(e){
+      if(e) e.stopPropagation();
+      Tutorial.abort();
+    };
+    this.bindAdvance();
+  },
+  /* 推进交互：点屏幕任意位置 → 让教练条往前走一格。
+     ── 为什么不放个"下一步"按钮 ──
+     教程要教的手感就是"点哪都能往下走"，多一个必须瞄准的按钮反而
+     偏离正片操作；而且教练条本身在屏幕顶部、高亮目标在别处，
+     玩家视线来回跳会很累。
+     ── 为什么用捕获且不 stopPropagation ──
+     不能拦截原操作：玩家点「试听」既要推进教练条、也要真的出声。
+     所以这里只"顺带"推进，不改变事件原本的去向。 */
+  bindAdvance(){
+    if(this._advBound) return;
+    this._advBound = true;
+    const self = this;
+    document.addEventListener('pointerdown', function(e){
+      const box = $('coach');
+      if(!box || !box.classList.contains('on')) return;
+      const t = e.target;
+      /* 「跳过」自己有 handler，这里不重复处理 */
+      if(t && t.closest && t.closest('#coachSkip')) return;
+      self.next();
+    }, true);
   },
   show(steps){
     this.init();
     this.steps = steps || [];
     this.idx = 0;
+    this._lastShowAt = Date.now();
     const el = $('coach');
     if(el) el.classList.add('on');
     this.render();
@@ -4568,6 +4907,8 @@ const Coach = {
      否则"高亮库存第一张卡"会在卡片还没渲染出来时算到 (0,0)。 */
   next(){
     if(!this.steps.length) return;
+    /* 换组后一小段时间内不推进，避免"刚显示就被上一下连点冲掉" */
+    if(Date.now() - this._lastShowAt < this.MIN_STEP_MS) return;
     if(this.idx >= this.steps.length - 1) return;
     this.idx++;
     const self = this;
@@ -4658,82 +4999,219 @@ const TutDemand = {
 };
 
 /* -------- 教程主体 -------- */
+/* v31 重构：教程从"改造第 1 天"改成"第 1 天之前的一个独立阶段"。
+   ── 用户的要求 ──
+   「新手教学发生在第一天之前，无论是跳过还是正常结束，结束后都应该
+     重新进入第一天流程：抽 5 张卡进库存；确保第一天开始前库存是空的！」
+   ── v30 的做法为什么不合要求 ──
+   v30 把第 1 天布置成"教程日"（预设客人 + 3 张演示唱片 + _tutorialDay，
+   并让 canResumeDay() 返回 true 来跳过抽卡）。三个后果：
+     · 教程跑完时 day 已经 ++ 成 2 —— 玩家真正的"第 1 天"变成了第 2 天
+     · 演示用的 3 张唱片一直留在库存里，第 2 天抽卡前库存不干净
+     · 用户报告的"教程结束后点开始游戏又回到教程界面"：
+       resetGame() 会删掉 TUTORIAL_KEY，于是"清除存档后重开"永远重念教程
+   ── 现在的状态机（只有一个判据）──
+   教程是否跑过，完全由 localStorage 里的 TUTORIAL_KEY 决定：
+     · 没跑过  → gameLoop 先跑 runDemo()，跑完（或跳过）才进第 1 天
+     · 跑过了  → 直接进第 1 天
+   这就同时解决了三件事：
+     · day 全程保持 1，教程结束时 runOneDay 会照常走 stockScreen() 抽 5 张
+     · runDemo 结束时会显式清空库存（用户要求"第一天开始前库存是空的"）
+     · TUTORIAL_KEY 不再被 resetGame() 删除，所以"清除存档后重开"
+       不会再撞回教程；想重看请用设置里的「重看新手教程」。
+   ── 为什么中途退出不需要"续跑"逻辑 ──
+   教程结束才 markTutorialDone()。玩家在教程中途返回主菜单，TUTORIAL_KEY
+   仍未写入，下次进来 shouldRun() 照样为真 → 从头演一遍。教程只有 1 位客人、
+   3 张唱片、且不结算任何真实营业数据，重演的成本极低，换来的是
+   完全不需要维护"教程进度存档"这一套易错的状态。 */
 const Tutorial = {
   active: false,
+  /* 玩家点了「跳过」。与 Game.abort 的区别：它只结束教程这一段，
+     整局会话仍然有效 —— serveOneGuest 里的守卫同时看这两个标志。
+     ── v31.1：生命周期必须**显式管理**（这里踩过一个很贵的坑）──
+     这个标志只描述"这一次 runDemo 被跳过"，所以它必须在 runDemo 返回后
+     就失效，否则 serveOneGuest 的守卫会把**之后每一天的每一位客人**
+     都当成"教程已经跳过"而直接 return —— 玩家进得了店，但客人不开口、
+     打不开库存、sold 恒为 0、金币再也不涨。
+     清除点有两处（都在"教程阶段真正结束"这个边界上）：
+       1) gameLoop 里 `await Tutorial.runDemo()` 之后 —— 主要修复点
+       2) runOneDay 开头 —— 防御性兜底，让不变量在营业日边界自我闭合
+     千万不要在 finish() 里清：abort() 依赖这个标志让"正飞着"的
+     serveOneGuest 从 await 处退栈（见 finish() 里的详细说明）。 */
+  _aborted: false,
   _retried: false,
 
-  /* 该不该跑：没看过教程、且现在是第 1 天。
-     只要跑过一次就落一个独立的 localStorage 标记 ——
-     它比"单局存档"更持久，所以换档、清档之后也不会再念一遍。 */
+  /* 该不该跑：没看过教程。
+     为什么只看 TUTORIAL_KEY，不额外看 day / 存档：见上方状态机说明。 */
   shouldRun(){
-    if(tutorialDone()) return false;
-    return Game.day === 1;
+    return !tutorialDone();
   },
 
   abort(){
     if(!this.active) return;
-    this.end();
-    toast('已跳过教程，开始正常营业');
+    this._aborted = true;
+    /* 先把两个"挂起的等待"解掉，再收尾 ——
+       否则 serveOneGuest 会永远卡在 await 上（v28 修过的同类死锁）。 */
+    cancelInvWait();
+    if(typeof RecView !== 'undefined' && RecView.cancel) RecView.cancel();
+    this.finish();
+    toast('已跳过教程，开始第 1 天');
   },
 
-  end(){
-    if(!this.active){
-      Coach.hide(); TutDemand.hide(); unlockInputNow();
-      return;
-    }
+  /* 回滚"累计"字段：教程是演练，不该污染真实进度。
+     单独抽出来是因为它有两个调用点：
+       · finish()        正常结束 / 跳过
+       · abortGameSession() 教程中途「暂停 → 返回主菜单」
+     第二处很容易漏 —— 漏了的话，玩家中途退出时会把这些脏数据
+     留在存档里（例如凭空解锁几个成就、累计收入虚高）。
+     幂等：_statSnap 只存在一次，回滚后置 null，重复调用是空操作。 */
+  restoreStats(){
+    if(!this._statSnap) return;
+    const s = this._statSnap;
+    this._statSnap = null;
+    /* 演示那一位客人走的是**完整的** serveOneGuest，会顺带累加
+       stats.served / stats.sold / stats.income、把 TUT_STORY.id 写进
+       seenStories、把 __tutorial_radio__ 写进 goodStories、
+       还可能点亮「第一桶金」这类按累计值判定的成就。
+       这些都不是玩家真的做出来的业绩（第 1 天还没开始），
+       所以整体还原 —— 教程只留下"学会了"这一个结果。 */
+    Game.stats        = s.stats;
+    Game.seenStories  = s.seenStories;
+    Game.goodStories  = s.goodStories;
+    Game.usedStories  = s.usedStories;
+    Game.repGood      = s.repGood;
+    Game.repBad       = s.repBad;
+    Game._rareSold    = s._rareSold;
+    Game._bigSale     = s._bigSale;
+    Game._perfectDay  = s._perfectDay;
+    Game.goldSold     = s.goldSold;
+    /* 成就列表也要还原：checkAchievements() 在教程里已经 toast 过了。
+       不还原的话玩家会"白拿"几个成就（而且之后再也弹不出提示）。 */
+    Game.achievements = s.achievements;
+    /* 金币刻意**不回滚**：演示的第一单是真实到账的，玩家在弹窗里
+       看到了"+N 金币"，收走会显得像 bug。金额很小（约 100~160），
+       而且第 1 天的普通进货免费，不会因此破坏经济平衡。 */
+  },
+
+  /* 教程收尾（正常结束 与 跳过 共用）。
+     用户的核心要求在这里落实：**库存清空**、当日统计归零、
+     教程标志落盘，然后交给 runOneDay 走一条干干净净的"第 1 天"。 */
+  finish(){
     this.active = false;
-    Game._tutorialDay = false;
+    /* ⚠ 这里**不能**把 _aborted 复位（v31 踩过的坑）。
+       ── 为什么 ──
+       abort() 的调用点在「跳过」按钮的 click 里，而 runDemo 那一刻
+       正挂在 await wait(1600) 上。abort() 先置 _aborted=true、
+       再调 finish()；如果 finish() 顺手把 _aborted 清回 false，
+       那么 runDemo 醒来时看到的仍是 false，于是**继续往下跑**
+       await serveOneGuest() —— 教程被"跳过"了却还在演，
+       而且 runOneDay() 永远轮不到执行：
+       玩家看到的正是"跳过之后没有进入第一天"。
+       _aborted 的生命周期应该是"一次 runDemo 之内"，
+       由 runDemo() 自己在开头复位、由 gameLoop / runOneDay 在教程
+       阶段结束后清除（见 Tutorial._aborted 的定义处）。
+       finish() 踩过两次坑，一次都不能再错：
+         · v30：顺手清了 → 跳过后教程继续演，runOneDay 永远轮不到
+         · v31：忘了在别处清 → 之后每一天的客人都被守卫 return 掉
+       （TUTORIAL_KEY 落盘后 runDemo 不会再跑，所以残留的 true 无害。） */
     Coach.hide();
     TutDemand.hide();
+    /* 收掉对话框并作废挂起的 Dialogue.play()（跳过时会用到） */
+    hideDialogue(true);
     unlockInputNow();
+
+    this.restoreStats();
+
+    /* ── 清场：这是"第一天开始前库存是空的"的实现 ──
+       演示用的 3 张唱片（TUT_DEMO_IDS）绝不能留到第 1 天：
+       它们只是教具，第 1 天的 5 张必须来自 stockScreen() 的抽卡。 */
+    Game.inventory = [];
+    Game.dayStories = [];
+    Game._dayInProgress = false;
+    Game.guestsToday = 0;
+    Game.daySoldList = [];
+    Game.dayIncome = 0; Game.dayExpense = 0;
+    Game._dayMoods = new Set(); Game._dayGood = 0;
+    Game.dayCollected = [];
+    Game._curGuest = -1; Game._curGuestDone = false;
+    /* 金边标记跟着演示唱片一起清掉（它们不是玩家买的货） */
+    clearGoldMarks();
+
     markTutorialDone();
     save();
   },
 
-  /* 把这一天布置成"教程日"。
-     关键：把状态摆成和 stockScreen() 的产出**完全同构**
-     （inventory / dayStories / _dayInProgress / 当日统计清零），
-     这样 canResumeDay() 会返回 true，runOneDay 就会跳过抽卡、
-     也不重置统计 —— 后面的接待、结算、店铺管理一行都不用改。 */
-  prepareDay(){
+  /* 教程演示主体。由 gameLoop 在第 1 天营业之前调用。
+     复用真实的 serveOneGuest —— 玩家学到的就是之后每天要做的操作。 */
+  async runDemo(){
     this.active = true;
+    this._aborted = false;
     this._retried = false;
+
+    /* 快照"累计"字段，供 finish() 回滚（见那里的说明）。
+       stats 要深拷贝 —— 它是对象，serveOneGuest 就地改它。 */
+    this._statSnap = {
+      stats:        JSON.parse(JSON.stringify(Game.stats || {})),
+      seenStories:  (Game.seenStories || []).slice(),
+      goodStories:  (Game.goodStories || []).slice(),
+      usedStories:  (Game.usedStories || []).slice(),
+      repGood:      Game.repGood || 0,
+      repBad:       Game.repBad || 0,
+      _rareSold:    Game._rareSold || 0,
+      _bigSale:     !!Game._bigSale,
+      _perfectDay:  !!Game._perfectDay,
+      goldSold:     Game.goldSold || 0,
+      achievements: (Game.achievements || []).slice()
+    };
+
+    /* 布置演示现场。注意 day 保持 1 —— 教程不是"第 0 天"，
+       它只是第 1 天开始前的一段。 */
     Game.guestsToday = 0;
     Game.daySoldList = [];
     Game.dayIncome = 0; Game.dayExpense = 0;
     Game._dayMoods = new Set(); Game._dayGood = 0;
     Game.dayCollected = [];
     Game.dayStories = [TUT_STORY, TUT_STORY, TUT_STORY, TUT_STORY, TUT_STORY];
-    Game._tutorialDay = true;
-    clearGoldMarks();
     Game.inventory = TUT_DEMO_IDS.slice();
-    Game._dayInProgress = true;
-    /* 立刻标记"已看过"。这样玩家中途返回主菜单、下次进来是**接着**这一天，
-       而不是从教程开头重念一遍（重念会和已推进的 guestsToday 打架）。 */
-    markTutorialDone();
+    /* ⚠ _dayInProgress 必须是 false（v30 在这里置了 true）：
+       置 true 会让 canResumeDay() 在教程结束后返回 true，
+       runOneDay 就会**跳过 stockScreen()** —— 玩家一张卡都抽不到，
+       正是用户说的"没有进入第一天流程"。 */
+    Game._dayInProgress = false;
+    clearGoldMarks();
     save();
+
     Coach.show([
-      { ic:'📖', text:'欢迎来到你的**唱片店**。第一天，我们慢一点走。',
+      { ic:'📖', text:'欢迎来到你的**唱片店**。开始营业之前，我们慢一点走一遍。',
         sub:'右上角随时可以跳过，跳过之后就是正常营业', target:null },
       { ic:'💬', text:'客人马上推门。**点屏幕任意位置**可以让对话往下走。',
         sub:'字还没打完时点一下 = 立刻显示整句；再点一下 = 下一句', target:'#dlg' }
     ]);
+
+    /* 给开场语留出阅读时间（短了形同虚设，长了显得卡） */
+    await wait(1600);
+    if(Game.abort || this._aborted) return;
+
+    await serveOneGuest(TUT_STORY);
+    /* 两条出路都要在这里干净返回：
+         Game.abort      → 整局会话作废（回主菜单 / 清档）
+         this._aborted   → 玩家点了「跳过」，finish() 已经跑过了 */
+    if(Game.abort || this._aborted) return;
+
+    /* 收尾解说，然后把舞台交还给 runOneDay */
+    this.deliveredGood();
+    await wait(2400);
+    if(Game.abort || this._aborted) return;
+    this.finish();
   },
 
-  /* 中途退出后又回到教程日：把教练条接回来（此时通常已经过了对话阶段） */
-  resumeCoach(){
-    if(this.active) return;
-    this.active = true;
-    this._retried = false;
-    Game._tutorialDay = true;
-    TutDemand.show(TUT_STORY);
-    this.enterTutorialGuest = true;
-    this.beforeInventory();
-  },
+  /* ---- 以下四个是 serveOneGuest 会调用的解说点 ---- */
 
-  /* ---- 以下四个是 serveOneGuest / runOneDay 会调用的解说点 ---- */
-
-  guestEnter(){
+  /* 客人进门。这里是教程的"第二段开场"，但玩家此刻还停在
+     runDemo() 的欢迎语上（"+点屏幕任意位置让对话往下走"），
+     所以先给他 1.4 秒读完，再切到"听他说完"的提示。
+     短了会让第一条形同虚设，长了会让"客人已经站在台上"显得卡。 */
+  async guestEnter(){
     if(!this.active) return;
     Coach.set([
       { ic:'👤', text:'客人进来了。**先听他说完** —— 他的需求藏在话里。',
@@ -4742,6 +5220,7 @@ const Tutorial = {
         sub:'待会儿挑唱片，就是拿这两条去对', target:'#tutDemand' }
     ]);
     TutDemand.show(TUT_STORY);
+    await wait(1400);
   },
 
   beforeInventory(){
@@ -4751,7 +5230,10 @@ const Tutorial = {
         sub:'店里能给的唱片都在这个列表里', target:'#scr-inv' },
       { ic:'🔍', text:'拿客人的**风格**和**氛围**，一张张对过去。',
         sub:'都合得上 → 最合适；只合一半 → 勉强；都不合 → 客人会失望',
-        target: function(){ return document.querySelector('#invGrid .inv-card'); } }
+        /* 高亮整个列表而不是第一张卡：
+           教程的教学目标是"自己比对"，高亮某一张等于把答案指出来，
+           玩家照做成功也不会记住判断方法。 */
+        target:'#invGrid' }
     ]);
     TutDemand.show(TUT_STORY);
   },
@@ -4803,13 +5285,15 @@ const Tutorial = {
 };
 window.Tutorial = Tutorial;
 
-/* ------------------------- 27.4 教程日的收尾 -------------------------
-   runOneDay 在教程服务完那 1 位客人之后照常走 reportScreen →
-   shopManageScreen → day++。这里只负责在这条路的**尾部**补两件事：
-     1) 让教练条说一句"今天先到这里"
-     2) 把 _tutorialDay 落回 false，否则明天也会只服务 1 位客人
-   之所以不塞进 runOneDay，是因为那段代码每天都会走，
-   而这两件事只在第 1 天需要 —— 放在这里读起来意图更清楚。 */
+/* ------------------------- 27.4 教程日的收尾（v31 已废弃） -------------------------
+   ── 这里原先是什么 ──
+   v30 把第 1 天改造成"教程日"（只服务 1 位客人），本节负责在那条路的
+   尾部把 `_tutorialDay` 落回 false，否则第 2 天也只会服务 1 位客人。
+   ── 为什么删掉 ──
+   v31 按用户要求把教程挪到了"第 1 天**之前**"的独立阶段
+   （Tutorial.runDemo，由 gameLoop 调用），runOneDay 再也不认识"教程"，
+   `_tutorialDay` 这个字段已从 Game / save / load / resetGame 中全部移除。
+   留着这节说明只会误导后来的人去找一个不存在的字段。 */
 
 /* ------------------------- 27. 启动 ------------------------- */
 function boot(){
